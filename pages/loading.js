@@ -27,12 +27,17 @@ export default function LoadingPage() {
       <Head>
         <title>Loading – Scalpel</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
-      <div className="page-container">
+      <div className="page-container dark-bg">
         <header className="header">
           <div className="header-left">
-            <span className="nav-link" onClick={() => alert('About page coming soon!')}>About</span>
             <img src="/logo2.png" alt="Scalpel Logo" className="header-logo" onClick={() => router.push('/')} />
+            <div className="nav-links">
+              <span className="nav-link" onClick={() => alert('About page coming soon!')}>About</span>
+            </div>
           </div>
           <div className="header-right">
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
@@ -43,81 +48,93 @@ export default function LoadingPage() {
             </a>
           </div>
         </header>
-
-        <main className="main-content">
-          <div className="spinner-ring">
-            <div />
-            <div />
-            <div />
-            <div />
-          </div>
-          <p className="loading-text">Loading analysis...</p>
+        <main className="main-content dark-main">
+          <div className="pulse-loader"></div>
+          <div className="loading-text">Loading analysis...</div>
         </main>
-
-        <footer className="footer">
-          <p>© {new Date().getFullYear()} Scalpel. All rights reserved.</p>
-        </footer>
       </div>
-
       <style jsx>{`
+        .dark-bg {
+          background: linear-gradient(135deg, #13111C, #1e1b2c, #292541);
+          min-height: 100vh;
+        }
         .page-container {
           min-height: 100vh;
           display: flex;
           flex-direction: column;
-          background: #fff;
-          font-family: 'Poppins', sans-serif;
-          color: #333;
+          font-family: 'Inter', 'Poppins', sans-serif;
+          overflow-x: hidden;
         }
         .header {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
-          height: calc(60px + env(safe-area-inset-top));
+          height: calc(70px + env(safe-area-inset-top));
           padding-top: env(safe-area-inset-top);
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          border-bottom: 1px solid #ddd;
-          background: #fff;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          background: rgba(19, 17, 28, 0.85);
+          backdrop-filter: blur(10px);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;
         }
         .header-left {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 24px;
+        }
+        .nav-links {
+          display: flex;
+          gap: 24px;
         }
         .nav-link {
           font-size: 0.9rem;
-          color: #666;
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
+          font-weight: 500;
+          transition: color 0.2s ease;
+          position: relative;
         }
         .nav-link:hover {
-          text-decoration: underline;
+          color: #fff;
         }
         .header-logo {
-          height: 40px;
+          height: 36px;
           width: auto;
           cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        .header-logo:hover {
+          transform: scale(1.05);
         }
         .header-right {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 20px;
         }
         .icon-link {
           display: flex;
           align-items: center;
+          transition: transform 0.2s ease;
+        }
+        .icon-link:hover {
+          transform: scale(1.1);
         }
         .icon-img {
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
+          opacity: 0.8;
+          transition: opacity 0.2s ease;
         }
-        .main-content {
-          margin-top: calc(60px + env(safe-area-inset-top));
+        .icon-img:hover {
+          opacity: 1;
+        }
+        .main-content.dark-main {
+          margin-top: calc(70px + env(safe-area-inset-top));
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -125,47 +142,34 @@ export default function LoadingPage() {
           justify-content: center;
           padding: 20px;
         }
-        .spinner-ring {
-          display: inline-block;
-          position: relative;
-          width: 80px;
-          height: 80px;
-          margin-bottom: 20px;
-        }
-        .spinner-ring div {
-          box-sizing: border-box;
-          display: block;
-          position: absolute;
-          width: 64px;
-          height: 64px;
-          margin: 8px;
-          border: 8px solid #999;
+        .pulse-loader {
+          width: 60px;
+          height: 60px;
           border-radius: 50%;
-          animation: ringSpin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-          border-color: #999 transparent transparent transparent;
+          background: linear-gradient(45deg, #8A2BE2, #FF1493);
+          margin-bottom: 24px;
+          position: relative;
+          animation: pulse 1.5s infinite;
         }
-        .spinner-ring div:nth-child(1) {
-          animation-delay: -0.45s;
-        }
-        .spinner-ring div:nth-child(2) {
-          animation-delay: -0.3s;
-        }
-        .spinner-ring div:nth-child(3) {
-          animation-delay: -0.15s;
-        }
-        @keyframes ringSpin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        @keyframes pulse {
+          0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.5);
+          }
+          70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 15px rgba(138, 43, 226, 0);
+          }
+          100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(138, 43, 226, 0);
+          }
         }
         .loading-text {
-          font-size: 1.1rem;
-        }
-        .footer {
-          text-align: center;
-          padding: 16px;
-          font-size: 0.9rem;
-          color: #777;
-          border-top: 1px solid #ddd;
+          font-size: 1.2rem;
+          color: #fff;
+          font-weight: 500;
+          letter-spacing: 0.5px;
         }
       `}</style>
     </>

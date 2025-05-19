@@ -51,23 +51,55 @@ export default function Home() {
 
   // 3) Fetch categories
   useEffect(() => {
-    // fetch trending
-    fetch('/api/trending')
-      .then((r) => r.json())
-      .then((data) => setTrending(data.trending || []))
-      .catch(console.error);
-
-    // fetch most viewed
-    fetch('/api/mostViewed')
-      .then((r) => r.json())
-      .then((data) => setMostViewed(data.results || []))
-      .catch(console.error);
-
-    // fetch most discussed
-    fetch('/api/mostDiscussed')
-      .then((r) => r.json())
-      .then((data) => setMostDiscussed(data.results || []))
-      .catch(console.error);
+    // Hardcoded songs for demo
+    setTrending([
+      {
+        id: 1063,
+        title: "Bohemian Rhapsody",
+        artist_names: "Queen",
+        cover_art: "https://images.genius.com/718de9d1fbcaae9f3c9b1bf483bfa8f1.1000x1000x1.png"
+      },
+      {
+        id: 122476,
+        title: "Total Eclipse of the Heart",
+        artist_names: "Bonnie Tyler",
+        cover_art: "https://images.genius.com/7696e1d75ca17ac6ed6b6334e59401ba.600x600x1.jpg"
+      },
+      {
+        id: 10024512,
+        title: "I Can Do It With a Broken Heart",
+        artist_names: "Taylor Swift",
+        cover_art: "https://images.genius.com/ffbac9cc7a380db1d09d5895dcc63a44.1000x1000x1.png"
+      }
+    ]);
+    setMostViewed([
+      {
+        id: 2236,
+        title: "Yesterday",
+        artist_names: "The Beatles",
+        cover_art: "https://images.genius.com/f9bfd62a8c651caab16f631039a9a0b6.600x600x1.jpg"
+      },
+      {
+        id: 3660088,
+        title: "Kevin’s Heart",
+        artist_names: "J. Cole",
+        cover_art: "https://images.genius.com/289a05fcbb77ebd0aecd2b221a613fe2.1000x1000x1.png"
+        }
+    ]);
+    setMostDiscussed([
+      {
+        id: 2419257,
+        title: "Formation",
+        artist_names: "Beyoncé",
+        cover_art: "https://images.genius.com/4a477a266a1de166f4e1e3ac714f474c.1000x1000x1.png"
+      },
+      {
+        id: 205311,
+        title: "Don’t Stop Me Now",
+        artist_names: "Queen",
+        cover_art: "https://images.genius.com/aface99ac22323aec35a2841f57af5c1.600x595x1.jpg"
+      }
+    ]);
   }, []);
 
   // Checking if analysis exists => skip loading if it does
@@ -88,19 +120,7 @@ export default function Home() {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (query.trim()) {
-      const parts = query.split('-');
-      if (parts.length === 2) {
-        const artist = parts[0].trim();
-        const track = parts[1].trim();
-        const exists = await checkAnalysisExists(artist, track);
-        if (exists) {
-          router.push(`/songs/${encodeURIComponent(artist)}/${encodeURIComponent(track)}`);
-        } else {
-          router.push(`/loading?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`);
-        }
-      } else {
-        alert('Use the format "Artist - Track".');
-      }
+      router.push(`/searchresults?track_name=${encodeURIComponent(query.trim())}`);
     }
   };
 
@@ -127,42 +147,74 @@ export default function Home() {
         <title>Scalpel</title>
         <meta name="description" content="Search for song analysis at Scalpel" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
-      <div className="page-container">
+      <div className="page-container dark-bg">
         <header className="header">
           <div className="header-left">
-            <span className="nav-link" onClick={() => alert('About page coming soon!')}>
-              About
-            </span>
-            <img
-              src="/logo2.png"
-              alt="Scalpel Logo"
-              className="header-logo"
-              onClick={() => router.push('/')}
-            />
+            <img src="/logo2.png" alt="Scalpel Logo" className="header-logo" onClick={() => router.push('/')} />
+            <div className="nav-links">
+              <span className="nav-link" onClick={() => alert('About page coming soon!')}>About</span>
+            </div>
           </div>
+          {/* <div className="search-wrapper-header" ref={searchWrapperRef}>
+            <form onSubmit={handleSearch} className="search-form-header">
+              <div className="search-input-wrapper-header">
+                <span className="search-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#777" viewBox="0 0 24 24">
+                    <path d="M21.707 20.293l-5.387-5.387a7.5 7.5 0 10-1.414 1.414l5.387 5.387a1 1 0 001.414-1.414zM10.5 16a5.5 5.5 0 110-11 5.5 5.5 0 010 11z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => {
+                    if (query.trim().length > 2) setShowSuggestions(true);
+                  }}
+                />
+              </div>
+            </form>
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="suggestions-dropdown">
+                {suggestions.slice(0, 5).map((s) => (
+                  <div
+                    key={s.id}
+                    className="suggestion-item"
+                    onClick={() => handleSuggestionClick(s)}
+                  >
+                    {s.cover_art && (
+                      <img
+                        src={s.cover_art}
+                        alt="Cover"
+                        className="suggestion-cover"
+                      />
+                    )}
+                    <div className="suggestion-text">
+                      <span className="suggestion-title">
+                        {s.title} – {s.artist_names}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div> */}
           <div className="header-right">
-            <a
-              href="https://www.instagram.com/medicine.boxx"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="icon-link"
-            >
-              <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="IG" className="icon-img" />
+            <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
+              <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
-            <a
-              href="https://www.tiktok.com/@medicine_box"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="icon-link"
-            >
+            <a href="https://www.tiktok.com/@medicine_box" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d8645748a7a3f311b4eca_tiktok-p-500.png" alt="TikTok" className="icon-img" />
             </a>
           </div>
         </header>
 
-        <div className="main-hero">
+        <div className="main-hero dark-main">
           <img
             src="/logo2.png"
             alt="Scalpel Logo"
@@ -231,7 +283,7 @@ export default function Home() {
                   <div
                     key={`${row.artist}-${row.track}-${i}`}
                     className="song-card"
-                    onClick={() => handleSongClick(row.artist, row.track)}
+                    onClick={() => router.push(`/songs/analysis/${row.id}?title=${encodeURIComponent(row.title)}&artist=${encodeURIComponent(row.artist_names)}`)}
                   >
                     <div className="cover-wrapper">
                       {row.cover_art ? (
@@ -241,7 +293,7 @@ export default function Home() {
                       )}
                     </div>
                     <p className="song-title">{row.track}</p>
-                    <p className="song-artist">{row.artist}</p>
+                    <p className="song-artist">{row.artist_names}</p>
                   </div>
                 ))}
               </div>
@@ -254,7 +306,7 @@ export default function Home() {
                   <div
                     key={`${row.artist}-${row.track}-${i}`}
                     className="song-card"
-                    onClick={() => handleSongClick(row.artist, row.track)}
+                    onClick={() => router.push(`/songs/analysis/${row.id}?title=${encodeURIComponent(row.title)}&artist=${encodeURIComponent(row.artist_names)}`)}
                   >
                     <div className="cover-wrapper">
                       {row.cover_art ? (
@@ -264,7 +316,7 @@ export default function Home() {
                       )}
                     </div>
                     <p className="song-title">{row.track}</p>
-                    <p className="song-artist">{row.artist}</p>
+                    <p className="song-artist">{row.artist_names}</p>
                   </div>
                 ))}
               </div>
@@ -277,7 +329,7 @@ export default function Home() {
                   <div
                     key={`${row.artist}-${row.track}-${i}`}
                     className="song-card"
-                    onClick={() => handleSongClick(row.artist, row.track)}
+                    onClick={() => router.push(`/songs/analysis/${row.id}?title=${encodeURIComponent(row.title)}&artist=${encodeURIComponent(row.artist_names)}`)}
                   >
                     <div className="cover-wrapper">
                       {row.cover_art ? (
@@ -287,7 +339,7 @@ export default function Home() {
                       )}
                     </div>
                     <p className="song-title">{row.track}</p>
-                    <p className="song-artist">{row.artist}</p>
+                    <p className="song-artist">{row.artist_names}</p>
                   </div>
                 ))}
               </div>
@@ -301,64 +353,167 @@ export default function Home() {
       </div>
 
       <style jsx>{`
-        /* Full page container */
-        .page-container {
+        .dark-bg {
+          background: linear-gradient(135deg,rgb(51, 46, 78),rgb(40, 36, 58), #13111C);
           min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          background: #fff;
-          font-family: 'Poppins', sans-serif;
         }
         .header {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
-          height: calc(60px + env(safe-area-inset-top));
+          height: calc(70px + env(safe-area-inset-top));
           padding-top: env(safe-area-inset-top);
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          border-bottom: 1px solid #ddd;
-          background: #fff;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          background: rgba(62, 58, 75, 0.85);
+          backdrop-filter: blur(10px);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;
         }
         .header-left {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 24px;
+        }
+        .nav-links {
+          display: flex;
+          gap: 24px;
         }
         .nav-link {
           font-size: 0.9rem;
-          color: #666;
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
+          font-weight: 500;
+          transition: color 0.2s ease;
+          position: relative;
+        }
+        .nav-link:hover {
+          color: #fff;
         }
         .header-logo {
-          height: 40px;
+          height: 36px;
           width: auto;
           cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+        .header-logo:hover {
+          transform: scale(1.05);
+        }
+        .search-wrapper-header {
+          position: relative;
+          width: 350px;
+        }
+        .search-form-header {
+          width: 100%;
+        }
+        .search-input-wrapper-header {
+          position: relative;
+          width: 100%;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+        .search-input-wrapper-header:hover, 
+        .search-input-wrapper-header:focus-within {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.1);
+        }
+        .search-icon {
+          position: absolute;
+          top: 50%;
+          left: 14px;
+          transform: translateY(-50%);
+        }
+        .search-form-header input {
+          width: 100%;
+          padding: 10px 14px 10px 40px;
+          font-size: 0.9rem;
+          border: none;
+          border-radius: 20px;
+          outline: none;
+          background: transparent;
+          color: #fff;
+        }
+        .search-form-header input::placeholder {
+          color: rgba(248, 242, 242, 0.5);
+        }
+        .suggestions-dropdown {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          width: 100%;
+          background: rgba(30, 27, 44, 0.95);
+          backdrop-filter: blur(10px);
+          border-radius: 12px;
+          max-height: 250px;
+          overflow-y: auto;
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+          z-index: 100;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .suggestion-item {
+          display: flex;
+          align-items: center;
+          padding: 10px 12px;
+          cursor: pointer;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          transition: background 0.2s ease;
+        }
+        .suggestion-item:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+        .suggestion-cover {
+          width: 40px;
+          height: 40px;
+          object-fit: cover;
+          border-radius: 6px;
+          margin-right: 12px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        .suggestion-text {
+          overflow: hidden;
+        }
+        .suggestion-title {
+          display: block;
+          font-size: 0.85rem;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-weight: 500;
         }
         .header-right {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 20px;
         }
         .icon-link {
           display: flex;
           align-items: center;
+          transition: transform 0.2s ease;
+        }
+        .icon-link:hover {
+          transform: scale(1.1);
         }
         .icon-img {
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
+          opacity: 0.8;
+          transition: opacity 0.2s ease;
         }
-
-        .main-hero {
-          margin-top: calc(60px + env(safe-area-inset-top));
+        .icon-img:hover {
+          opacity: 1;
+        }
+        .dark-main {
+          margin-top: calc(70px + env(safe-area-inset-top));
           flex: 1;
-          padding: 20px;
+          padding: 30px 20px;
           max-width: 1200px;
           margin-left: auto;
           margin-right: auto;
@@ -402,37 +557,6 @@ export default function Home() {
           border-radius: 24px;
           outline: none;
         }
-        .suggestions-dropdown {
-          position: absolute;
-          top: calc(100% + 4px);
-          left: 50%;
-          transform: translateX(-50%);
-          width: 100%;
-          background: #fff;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          max-height: 250px;
-          overflow-y: auto;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          z-index: 100;
-        }
-        .suggestion-item {
-          display: flex;
-          align-items: center;
-          padding: 10px;
-          cursor: pointer;
-          border-bottom: 1px solid #eee;
-        }
-        .suggestion-item:hover {
-          background-color: #f8f8f8;
-        }
-        .suggestion-cover {
-          width: 40px;
-          height: 40px;
-          object-fit: cover;
-          border-radius: 4px;
-          margin-right: 10px;
-        }
         .browse-sections {
           width: 100%;
         }
@@ -442,7 +566,7 @@ export default function Home() {
         .section-row h2 {
           font-size: 1.2rem;
           margin-bottom: 10px;
-          color: #333;
+          color: #bbd;
         }
         .horiz-scroll {
           display: flex;

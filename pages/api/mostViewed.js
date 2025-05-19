@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         s.artist, 
         s.track, 
         CASE 
-          WHEN substring(a.ai_response from 1 for 1) = '{'
+          WHEN substring(a.ai_response::text from 1 for 1) = '{'
             THEN a.ai_response::json->>'coverArt'
           ELSE 'https://via.placeholder.com/150'
         END AS cover_art,
