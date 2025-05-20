@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
+import { API_ENDPOINTS } from '../../../constants';
 
 export default function SongAnalysis() {
   const router = useRouter();
@@ -13,26 +14,32 @@ export default function SongAnalysis() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchWrapperRef = useRef(null);
-  const [comments, setComments] = useState([
-    { id: 1, user: 'musiclover22', text: 'This song has such deep meaning!', timestamp: '2 hours ago', likes: 12 },
-    { id: 2, user: 'lyrical_genius', text: 'The wordplay in the second verse is incredible.', timestamp: '5 hours ago', likes: 8 },
-    { id: 3, user: 'beat_explorer', text: 'Anyone notice how the production complements the lyrics perfectly?', timestamp: '1 day ago', likes: 24 },
-  ]);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [commentUpvotes, setCommentUpvotes] = useState({});
+  const [userUpvotes, setUserUpvotes] = useState({});
   const [activeSection, setActiveSection] = useState('lyrics');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authForm, setAuthForm] = useState({
+    username: '',
+    password: ''
+  });
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     if (!id || !title || !artist) return;
     setLoading(true);
     // Get cover art from search_lyrics for this id
-    fetch(`http://localhost:8000/search_lyrics?track_name=${encodeURIComponent(title)}`)
+    fetch(`${API_ENDPOINTS.SEARCH_LYRICS}?track_name=${encodeURIComponent(title)}`)
       .then((res) => res.json())
       .then((data) => {
         const found = (data.results || []).find((s) => String(s.id) === String(id));
         if (found) setCoverArt(found.cover_art);
       });
     // Get analysis and lyrics
-    fetch(`http://localhost:8000/analyze_lyrics?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
+    fetch(`${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
       .then((res) => res.json())
       .then((data) => {
         setAnalysis(data.analysis || null);
@@ -87,35 +94,210 @@ export default function SongAnalysis() {
     router.push(`/searchresults?track_name=${encodeURIComponent(item.title)}`);
   };
 
-  const handleAddComment = (e) => {
+  // Fetch comments when song ID is available
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${API_ENDPOINTS.COMMENTS}/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        // Ensure data is an array
+        setComments(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error('Error fetching comments:', err);
+        setComments([]); // Set empty array on error
+      });
+  }, [id]);
+
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (newComment.trim()) {
-      const newCommentObj = {
-        id: comments.length + 1,
-        user: 'current_user',
-        text: newComment,
-        timestamp: 'Just now',
-        likes: 0
-      };
-      setComments([newCommentObj, ...comments]);
-      setNewComment('');
+    if (!newComment.trim() || !id) return;
+
+    try {
+      const response = await fetch(API_ENDPOINTS.COMMENTS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          content: newComment.trim(),
+          song_id: id
+        })
+      });
+
+      if (response.ok) {
+        const newCommentData = await response.json();
+        setComments([newCommentData, ...comments]);
+        setNewComment('');
+      } else {
+        console.error('Failed to post comment');
+      }
+    } catch (err) {
+      console.error('Error posting comment:', err);
     }
   };
 
-  const likeComment = (id) => {
-    setComments(comments.map(comment => 
-      comment.id === id ? {...comment, likes: comment.likes + 1} : comment
-    ));
+  const handleDeleteComment = async (commentId) => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.COMMENTS}/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+  
+      if (response.ok) {
+        // Remove comment from the UI
+        setComments(comments.filter(comment => comment.id !== commentId));
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to delete comment:', errorData);
+        alert('Cannot delete this comment. ' + (errorData.detail || ''));
+      }
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      alert('An error occurred while deleting the comment.');
+    }
+  }
+
+  const handleUpvoteComment = async (commentId) => {
+    // Check if user has already upvoted this comment
+    if (userUpvotes[commentId]) {
+      // User has already upvoted this comment
+      alert('You have already upvoted this comment');
+      return;
+    }
+  
+    try {
+      const response = await fetch(`${API_ENDPOINTS.COMMENTS}/${commentId}/upvote`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update the local upvote count
+        setCommentUpvotes(prev => ({
+          ...prev,
+          [commentId]: (prev[commentId] || 0) + 1
+        }));
+        
+        // Save to userUpvotes state and localStorage to prevent multiple upvotes
+        const updatedUpvotes = { ...userUpvotes, [commentId]: true };
+        setUserUpvotes(updatedUpvotes);
+        localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
+        
+        // Check if the comment has reached 10 upvotes
+        if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
+          // Get the current analysis data using the same API endpoint as in useEffect
+          const analysisResponse = await fetch(
+            `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+          );
+          
+          const analysisData = await analysisResponse.json();
+          
+          // Trigger re-analyze API with the correct body format
+          fetch(API_ENDPOINTS.RE_ANALYZE, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              oldAnalysis: {
+                overallHeadline: analysisData.analysis.overallHeadline,
+                songTitle: analysisData.analysis.songTitle,
+                artist: analysisData.analysis.artist,
+                introduction: analysisData.analysis.introduction,
+                sectionAnalyses: analysisData.analysis.sectionAnalyses,
+                conclusion: analysisData.analysis.conclusion
+              },
+              newComment: comments.find(c => c.id === commentId)?.content || '',
+              artist: artist,
+              track: title
+            })
+          });
+        }
+      } else {
+        console.error('Failed to upvote comment');
+      }
+    } catch (err) {
+      console.error('Error upvoting comment:', err);
+    }
+  };
+  useEffect(() => {
+    // Load previously upvoted comments from localStorage
+    const savedUpvotes = localStorage.getItem('userUpvotes');
+    if (savedUpvotes) {
+      setUserUpvotes(JSON.parse(savedUpvotes));
+    }
+  }, []);
+
+  // Check if user is logged in on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+    
+    // Get the user ID when component mounts
+    if (token) {
+      // Fetch user info to get ID if you have an endpoint for it
+      fetch(`${API_ENDPOINTS.USER}/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        localStorage.setItem('userId', data.id);
+      })
+      .catch(err => {
+        console.error('Error fetching user info:', err);
+      });
+    }
+  }, []);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTH[authMode === 'login' ? 'LOGIN' : 'REGISTER'], {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(authForm)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('token', data.access_token);
+        setIsLoggedIn(true);
+        setShowAuthModal(false);
+        setAuthForm({ username: '', password: '' });
+      } else {
+        setAuthError(data.detail || 'Authentication failed');
+      }
+    } catch (err) {
+      setAuthError('An error occurred. Please try again.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
   };
 
   return (
     <>
       <Head>
-        <title>{title ? `${title} – ${artist}` : 'Song'} | Scalpel</title>
+        <title>{title ? `${title} by ${artist} | Scalpel` : 'Song Analysis | Scalpel'}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
       <div className="page-container">
         <header className="header">
@@ -172,6 +354,18 @@ export default function SongAnalysis() {
             )}
           </div>
           <div className="header-right">
+            {isLoggedIn ? (
+              <button className="auth-button logout" onClick={handleLogout}>
+                Logout
+              </button>
+            ) : (
+              <button className="auth-button login" onClick={() => {
+                setAuthMode('login');
+                setShowAuthModal(true);
+              }}>
+                Login
+              </button>
+            )}
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
@@ -180,6 +374,69 @@ export default function SongAnalysis() {
             </a>
           </div>
         </header>
+
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
+            <div className="auth-modal" onClick={e => e.stopPropagation()}>
+              <div className="auth-modal-header">
+                <h2>{authMode === 'login' ? 'Login' : 'Sign Up'}</h2>
+                <button className="close-button" onClick={() => setShowAuthModal(false)}>×</button>
+              </div>
+              <form onSubmit={handleAuth} className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="username">Username</label>
+                  <input
+                    type="text"
+                    id="username"
+                    value={authForm.username}
+                    onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    required
+                  />
+                </div>
+                {authError && <div className="auth-error">{authError}</div>}
+                <button type="submit" className="auth-submit">
+                  {authMode === 'login' ? 'Login' : 'Sign Up'}
+                </button>
+                <div className="auth-switch">
+                  {authMode === 'login' ? (
+                    <p>
+                      Don't have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('signup')}
+                        className="switch-button"
+                      >
+                        Sign Up
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Already have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('login')}
+                        className="switch-button"
+                      >
+                        Login
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="futuristic-background">
           {loading ? (
@@ -297,42 +554,61 @@ export default function SongAnalysis() {
                       </form>
                     </div>
                     <div className="comments-list">
-                      {comments.map((comment) => (
-                        <div key={comment.id} className="comment-item">
-                          <div className="comment-avatar">
-                            {comment.user === 'current_user' ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
-                            ) : (
-                              <div className="avatar-circle">{comment.user[0].toUpperCase()}</div>
-                            )}
-                          </div>
-                          <div className="comment-content">
-                            <div className="comment-header">
-                              <span className="comment-username">@{comment.user}</span>
-                              <span className="comment-time">{comment.timestamp}</span>
+                      {comments.map((comment) => {
+                        // Get stored user ID to check if comment belongs to current user
+                        const currentUserId = localStorage.getItem('userId');
+                        const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
+                        
+                        return (
+                          <div key={comment.id} className="comment-block">
+                            <div className="comment-avatar">
+                              <div className="avatar-circle">
+                                {isLoggedIn && comment.user?.username 
+                                  ? comment.user.username[0].toUpperCase() 
+                                  : 'U'}
+                              </div>
                             </div>
-                            <p className="comment-text">{comment.text}</p>
-                            <div className="comment-actions">
-                              <button className="comment-like" onClick={() => likeComment(comment.id)}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
-                                </svg>
-                                {comment.likes}
-                              </button>
-                              <button className="comment-reply">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="15 10 20 15 15 20"></polyline>
-                                  <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
-                                </svg>
-                                Reply
-                              </button>
+                            <div className="comment-content">
+                              <div className="comment-header">
+                                <span className="comment-username">
+                                  {comment.user?.username || 'User'}
+                                </span>
+                                <span className="comment-time">
+                                  {new Date(comment.created_at).toLocaleDateString()}
+                                </span>
+                                {isCommentOwner && (
+                                  <button 
+                                    className="delete-button" 
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    aria-label="Delete comment"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M3 6h18"></path>
+                                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              <p className="comment-text">{comment.content}</p>
+                              <div className="comment-actions">
+                                <button 
+                                  className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
+                                  onClick={() => handleUpvoteComment(comment.id)}
+                                  disabled={userUpvotes[comment.id]}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                  </svg>
+                                  <span>{commentUpvotes[comment.id] || 0}</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -436,6 +712,16 @@ export default function SongAnalysis() {
         
         .nav-link:hover::after {
           width: 100%;
+        }
+
+        .comment-action.upvoted {
+          color: #8A2BE2;
+          pointer-events: none;
+        }
+
+        .comment-action.upvoted svg {
+          fill: rgba(138, 43, 226, 0.2);
+          stroke: #8A2BE2;
         }
         
         .header-logo {
@@ -658,6 +944,26 @@ export default function SongAnalysis() {
           align-items: center;
           justify-content: center;
           color: rgba(255, 255, 255, 0.5);
+        }
+
+        .delete-button {
+          background: none;
+          border: none;
+          padding: 4px;
+          margin-left: auto;
+          cursor: pointer;
+          color: rgba(255, 255, 255, 0.5);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+
+        .delete-button:hover {
+          background: rgba(255, 20, 147, 0.15);
+          color: #FF1493;
+          transform: scale(1.1);
         }
         
         .pulse-rings {
@@ -998,24 +1304,35 @@ export default function SongAnalysis() {
         
         .comment-actions {
           display: flex;
-          gap: 16px;
+          gap: 8px;
+          margin-left: auto;
         }
         
-        .comment-like, .comment-reply {
+        .comment-action {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           background: none;
           border: none;
           color: rgba(255, 255, 255, 0.5);
           font-size: 0.85rem;
           cursor: pointer;
           transition: color 0.2s ease;
-          padding: 0;
+          padding: 4px 8px;
+          border-radius: 12px;
         }
         
-        .comment-like:hover, .comment-reply:hover {
+        .comment-action:hover {
           color: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .comment-action.upvote:hover {
+          color: #8A2BE2;
+        }
+        
+        .comment-action.delete:hover {
+          color: #FF1493;
         }
         
         /* Responsive Styles */
@@ -1111,6 +1428,154 @@ export default function SongAnalysis() {
             width: 100%;
             justify-content: space-between;
           }
+        }
+
+        .auth-button {
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          margin-right: 15px;
+        }
+
+        .auth-button.login {
+          background: linear-gradient(90deg, #8A2BE2, #FF1493);
+          color: white;
+        }
+
+        .auth-button.logout {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          backdrop-filter: blur(5px);
+        }
+
+        .auth-modal {
+          background: rgba(30, 27, 44, 0.95);
+          border-radius: 16px;
+          padding: 30px;
+          width: 90%;
+          max-width: 400px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auth-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .auth-modal-header h2 {
+          color: white;
+          font-size: 1.5rem;
+          font-weight: 600;
+        }
+
+        .close-button {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0;
+          line-height: 1;
+        }
+
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .form-group label {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 0.9rem;
+        }
+
+        .form-group input {
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          font-size: 1rem;
+        }
+
+        .form-group input:focus {
+          outline: none;
+          border-color: #8A2BE2;
+          box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
+        }
+
+        .auth-error {
+          color: #ff4444;
+          font-size: 0.9rem;
+          text-align: center;
+        }
+
+        .auth-submit {
+          padding: 12px;
+          border-radius: 8px;
+          border: none;
+          background: linear-gradient(90deg, #8A2BE2, #FF1493);
+          color: white;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .auth-submit:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-switch {
+          text-align: center;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.9rem;
+        }
+
+        .switch-button {
+          background: none;
+          border: none;
+          color: #8A2BE2;
+          cursor: pointer;
+          font-weight: 500;
+          padding: 0;
+        }
+
+        .switch-button:hover {
+          text-decoration: underline;
         }
       `}</style>
     </>

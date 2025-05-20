@@ -1,0 +1,13 @@
+export const BASE_URL = 'http://localhost:8000';
+
+export const API_ENDPOINTS = {
+  SEARCH_LYRICS: `${BASE_URL}/search_lyrics`,
+  ANALYZE_LYRICS: `${BASE_URL}/analyze_lyrics`,
+  RE_ANALYZE: `${BASE_URL}/re_analyze`,
+  COMMENTS: `${BASE_URL}/api/comments`,
+  USER: `${BASE_URL}/api/user`,
+  AUTH: {
+    LOGIN: `${BASE_URL}/token`,
+    REGISTER: `${BASE_URL}/register`
+  }
+}; 
