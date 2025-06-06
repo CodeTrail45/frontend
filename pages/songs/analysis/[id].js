@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
-import { API_ENDPOINTS } from '../../../constants';
+import { API_ENDPOINTS, BASE_URL } from '../../../constants';
 
 export default function SongAnalysis() {
   const router = useRouter();
@@ -53,13 +53,15 @@ export default function SongAnalysis() {
   useEffect(() => {
     if (query.trim().length > 2) {
       const timer = setTimeout(() => {
-        fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+        fetch(`${BASE_URL}/search_lyrics?track_name=${encodeURIComponent(query.trim())}`)
           .then((res) => res.json())
           .then((data) => {
             setSuggestions(data.results || []);
             setShowSuggestions(true);
           })
-          .catch(() => setSuggestions([]));
+          .catch((err) => {
+            setSuggestions([]);
+          });
       }, 300);
       return () => clearTimeout(timer);
     } else {
@@ -94,47 +96,93 @@ export default function SongAnalysis() {
     router.push(`/searchresults?track_name=${encodeURIComponent(item.title)}`);
   };
 
-  // Fetch comments when song ID is available
+  // Fetch comments when comments tab is clicked
   useEffect(() => {
-    if (!id) return;
-    fetch(`${API_ENDPOINTS.COMMENTS}/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        // Ensure data is an array
-        setComments(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.error('Error fetching comments:', err);
-        setComments([]); // Set empty array on error
-      });
-  }, [id]);
+    if (activeSection === 'comments' && id) {
+      fetch(`${BASE_URL}/api/songs/${id}/comments`)
+        .then(async (res) => {
+          if (res.status === 404) {
+            return [];
+          }
+          if (!res.ok) {
+            console.warn(`Comments fetch returned status ${res.status}`);
+            return [];
+          }
+          try {
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
+          } catch (err) {
+            console.warn('Error parsing comments response:', err);
+            return [];
+          }
+        })
+        .then((data) => {
+          setComments(data);
+          // Initialize upvote counts from the fetched comments
+          const upvoteCounts = {};
+          data.forEach(comment => {
+            if (comment.upvote_count !== undefined) {
+              upvoteCounts[comment.id] = comment.upvote_count;
+            }
+          });
+          setCommentUpvotes(upvoteCounts);
+        })
+        .catch((err) => {
+          console.warn('Error in comments fetch:', err);
+          setComments([]);
+        });
+    }
+  }, [activeSection, id]);
 
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim() || !id) return;
 
+    const token = localStorage.getItem('token');
+    const endpoint = token 
+      ? `${BASE_URL}/api/comments/authenticated` 
+      : `${BASE_URL}/api/comments/anonymous`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
     try {
-      const response = await fetch(API_ENDPOINTS.COMMENTS, {
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers,
         body: JSON.stringify({
           content: newComment.trim(),
           song_id: id
         })
       });
 
-      if (response.ok) {
+      if (response.status === 401) {
+        alert('Please log in to post comments');
+        return;
+      }
+
+      if (!response.ok) {
+        console.warn(`Comment post returned status ${response.status}`);
+        return;
+      }
+
+      try {
         const newCommentData = await response.json();
         setComments([newCommentData, ...comments]);
         setNewComment('');
-      } else {
-        console.error('Failed to post comment');
+        // Initialize upvote count for the new comment
+        if (newCommentData.upvote_count !== undefined) {
+          setCommentUpvotes(prev => ({
+            ...prev,
+            [newCommentData.id]: newCommentData.upvote_count
+          }));
+        }
+      } catch (err) {
+        console.warn('Error parsing comment response:', err);
       }
     } catch (err) {
-      console.error('Error posting comment:', err);
+      console.warn('Error posting comment:', err);
     }
   };
 
@@ -147,24 +195,32 @@ export default function SongAnalysis() {
         }
       });
   
-      if (response.ok) {
-        // Remove comment from the UI
-        setComments(comments.filter(comment => comment.id !== commentId));
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to delete comment:', errorData);
-        alert('Cannot delete this comment. ' + (errorData.detail || ''));
+      // Handle different response statuses
+      if (response.status === 401) {
+        alert('Please log in to delete comments');
+        return;
       }
+
+      if (response.status === 403) {
+        alert('You can only delete your own comments');
+        return;
+      }
+
+      if (!response.ok) {
+        console.warn(`Comment delete returned status ${response.status}`);
+        return;
+      }
+
+      // Remove comment from the UI
+      setComments(comments.filter(comment => comment.id !== commentId));
     } catch (err) {
-      console.error('Error deleting comment:', err);
-      alert('An error occurred while deleting the comment.');
+      console.warn('Error deleting comment:', err);
     }
   }
 
   const handleUpvoteComment = async (commentId) => {
     // Check if user has already upvoted this comment
     if (userUpvotes[commentId]) {
-      // User has already upvoted this comment
       alert('You have already upvoted this comment');
       return;
     }
@@ -177,7 +233,18 @@ export default function SongAnalysis() {
         }
       });
   
-      if (response.ok) {
+      // Handle different response statuses
+      if (response.status === 401) {
+        alert('Please log in to upvote comments');
+        return;
+      }
+
+      if (!response.ok) {
+        console.warn(`Upvote returned status ${response.status}`);
+        return;
+      }
+
+      try {
         const data = await response.json();
         
         // Update the local upvote count
@@ -193,47 +260,65 @@ export default function SongAnalysis() {
         
         // Check if the comment has reached 10 upvotes
         if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
-          // Get the current analysis data using the same API endpoint as in useEffect
-          const analysisResponse = await fetch(
-            `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
-          );
-          
-          const analysisData = await analysisResponse.json();
-          
-          // Trigger re-analyze API with the correct body format
-          fetch(API_ENDPOINTS.RE_ANALYZE, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-              oldAnalysis: {
-                overallHeadline: analysisData.analysis.overallHeadline,
-                songTitle: analysisData.analysis.songTitle,
-                artist: analysisData.analysis.artist,
-                introduction: analysisData.analysis.introduction,
-                sectionAnalyses: analysisData.analysis.sectionAnalyses,
-                conclusion: analysisData.analysis.conclusion
+          try {
+            // Get the current analysis data
+            const analysisResponse = await fetch(
+              `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+            );
+            
+            if (!analysisResponse.ok) {
+              console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
+              return;
+            }
+
+            const analysisData = await analysisResponse.json();
+            
+            // Trigger re-analyze API
+            const reanalyzeResponse = await fetch(API_ENDPOINTS.RE_ANALYZE, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
               },
-              newComment: comments.find(c => c.id === commentId)?.content || '',
-              artist: artist,
-              track: title
-            })
-          });
+              body: JSON.stringify({
+                oldAnalysis: {
+                  overallHeadline: analysisData.analysis.overallHeadline,
+                  songTitle: analysisData.analysis.songTitle,
+                  artist: analysisData.analysis.artist,
+                  introduction: analysisData.analysis.introduction,
+                  sectionAnalyses: analysisData.analysis.sectionAnalyses,
+                  conclusion: analysisData.analysis.conclusion
+                },
+                newComment: comments.find(c => c.id === commentId)?.content || '',
+                artist: artist,
+                track: title
+              })
+            });
+
+            if (!reanalyzeResponse.ok) {
+              console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
+            }
+          } catch (err) {
+            console.warn('Error in re-analyze process:', err);
+          }
         }
-      } else {
-        console.error('Failed to upvote comment');
+      } catch (err) {
+        console.warn('Error parsing upvote response:', err);
       }
     } catch (err) {
-      console.error('Error upvoting comment:', err);
+      console.warn('Error upvoting comment:', err);
     }
   };
+
   useEffect(() => {
     // Load previously upvoted comments from localStorage
     const savedUpvotes = localStorage.getItem('userUpvotes');
     if (savedUpvotes) {
-      setUserUpvotes(JSON.parse(savedUpvotes));
+      try {
+        setUserUpvotes(JSON.parse(savedUpvotes));
+      } catch (err) {
+        console.warn('Error parsing saved upvotes:', err);
+      }
     }
   }, []);
 
@@ -255,7 +340,7 @@ export default function SongAnalysis() {
         localStorage.setItem('userId', data.id);
       })
       .catch(err => {
-        console.error('Error fetching user info:', err);
+        console.warn('Error fetching user info:', err);
       });
     }
   }, []);
@@ -290,6 +375,7 @@ export default function SongAnalysis() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userId');
     setIsLoggedIn(false);
   };
 
@@ -510,7 +596,36 @@ export default function SongAnalysis() {
                 </div>
                 <div 
                   className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
-                  onClick={() => setActiveSection('comments')}
+                  onClick={() => {
+                    setActiveSection('comments');
+                    // Force a comments refresh when tab is clicked
+                    if (id) {
+                      fetch(`${BASE_URL}/api/songs/${id}/comments`)
+                        .then(async (res) => {
+                          if (res.status === 404) {
+                            return [];
+                          }
+                          if (!res.ok) {
+                            console.warn(`Comments fetch returned status ${res.status}`);
+                            return [];
+                          }
+                          try {
+                            const data = await res.json();
+                            return Array.isArray(data) ? data : [];
+                          } catch (err) {
+                            console.warn('Error parsing comments response:', err);
+                            return [];
+                          }
+                        })
+                        .then((data) => {
+                          setComments(data);
+                        })
+                        .catch((err) => {
+                          console.warn('Error in comments fetch:', err);
+                          setComments([]);
+                        });
+                    }
+                  }}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -563,15 +678,13 @@ export default function SongAnalysis() {
                           <div key={comment.id} className="comment-block">
                             <div className="comment-avatar">
                               <div className="avatar-circle">
-                                {isLoggedIn && comment.user?.username 
-                                  ? comment.user.username[0].toUpperCase() 
-                                  : 'U'}
+                                {comment.username ? comment.username[0].toUpperCase() : 'U'}
                               </div>
                             </div>
                             <div className="comment-content">
                               <div className="comment-header">
                                 <span className="comment-username">
-                                  {comment.user?.username || 'User'}
+                                  {comment.username || 'Anonymous User'}
                                 </span>
                                 <span className="comment-time">
                                   {new Date(comment.created_at).toLocaleDateString()}
@@ -584,7 +697,7 @@ export default function SongAnalysis() {
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                       <path d="M3 6h18"></path>
-                                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                       <line x1="10" y1="11" x2="10" y2="17"></line>
                                       <line x1="14" y1="11" x2="14" y2="17"></line>
                                     </svg>
@@ -602,7 +715,7 @@ export default function SongAnalysis() {
                                     <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
                                     <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
                                   </svg>
-                                  <span>{commentUpvotes[comment.id] || 0}</span>
+                                  <span>{comment.upvote_count || 0}</span>
                                 </button>
                               </div>
                             </div>
@@ -635,25 +748,12 @@ export default function SongAnalysis() {
         }
         
         .futuristic-background {
-          background: linear-gradient(135deg, #13111C, #1e1b2c, #292541);
-          min-height: calc(100vh - 70px);
-          padding-top: calc(70px + env(safe-area-inset-top));
+          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
+          min-height: 100vh;
+          padding-top: calc(70px + env(safe-area-inset-top)); /* Add padding to push content below header */
           width: 100%;
           position: relative;
           overflow: hidden;
-        }
-        
-        .futuristic-background::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: 
-            radial-gradient(circle at 10% 20%, rgba(100, 80, 255, 0.03) 0%, transparent 20%),
-            radial-gradient(circle at 90% 80%, rgba(255, 100, 180, 0.03) 0%, transparent 20%);
-          pointer-events: none;
         }
         
         .header {
@@ -668,7 +768,7 @@ export default function SongAnalysis() {
           justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          background: rgba(19, 17, 28, 0.85);
+          background: rgba(106, 103, 116, 0.85);
           backdrop-filter: blur(10px);
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;

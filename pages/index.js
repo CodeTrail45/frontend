@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { BASE_URL } from '../constants';
 
 export default function Home() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function Home() {
   useEffect(() => {
     if (query.trim().length > 2) {
       const timer = setTimeout(() => {
-        fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+        fetch(`${BASE_URL}/api/search?q=${encodeURIComponent(query.trim())}`)
           .then((res) => res.json())
           .then((data) => {
             setSuggestions(data.results || []);
@@ -70,6 +71,60 @@ export default function Home() {
         title: "I Can Do It With a Broken Heart",
         artist_names: "Taylor Swift",
         cover_art: "https://images.genius.com/ffbac9cc7a380db1d09d5895dcc63a44.1000x1000x1.png"
+      },
+      {
+        id: 299177,
+        title: "Drunk in Love",
+        artist_names: "Beyoncé (Ft. JAY-Z)",
+        cover_art: "https://images.genius.com/822e0619fe28f3e35aba4eba567111e8.1000x1000x1.png"
+        },
+      {
+        id: 2263909,
+        title: "i hate u, i love u",
+        artist_names: "gnash (Ft. Olivia O'Brien)",
+        cover_art: "https://images.genius.com/40fcc6f11d0fcedfd4b21789c41af8db.1000x1000x1.png"
+      },
+      {
+        id: 2342329,
+        title: "Love Yourself",
+        artist_names: "Justin Bieber",
+        cover_art: "https://images.genius.com/c48eb30caab693c9a80f49610e2ddb24.1000x1000x1.png"
+      },
+      {
+        id: 92464,
+        title: "Love Sosa",
+        artist_names: "Chief Keef",
+        cover_art: "https://images.genius.com/45653129f1bada90a3803e0abd3e04e7.800x800x1.png"
+      },
+      {
+        id: 3422526,
+        title: "lovely",
+        artist_names: "Billie Eilish & Khalid",
+        cover_art: "https://images.genius.com/0a59a8c2c66bb9b588c5f68d9f7acd22.1000x1000x1.png"
+      },
+      {
+        id: 3182605,
+        title: "Fuck Love",
+        artist_names: "XXXTENTACION (Ft. Trippie Redd)",
+        cover_art: "https://images.genius.com/3909b41f2c27e688e4caec3637cdba36.1000x1000x1.png"
+      },
+      {
+        id: 6419329,
+        title: "Gone",
+        artist_names: "ROSÉ",
+        cover_art: "https://images.genius.com/e8a9c7c30efdb765f5a8428364f0a895.1000x1000x1.png"
+      },
+      {
+        id: 191,
+        title: "Big Poppa",
+        artist_names: "The Notorious B.I.G.",
+        cover_art: "https://images.genius.com/514706123e1556e4d0c33474516ec2f3.1000x1000x1.png"
+      },
+      {
+        id: 570825,
+        title: "No Flockin",
+        artist_names: "Kodak Black",
+        cover_art: "https://images.genius.com/cee9f34bdb116b81d4b60b0b207fee62.1000x1000x1.png"
       }
     ]);
     setMostViewed([
@@ -81,10 +136,40 @@ export default function Home() {
       },
       {
         id: 3660088,
-        title: "Kevin’s Heart",
+        title: "Kevin's Heart",
         artist_names: "J. Cole",
         cover_art: "https://images.genius.com/289a05fcbb77ebd0aecd2b221a613fe2.1000x1000x1.png"
-        }
+      },
+      {
+        id: 3182605,
+        title: "Fuck Love",
+        artist_names: "XXXTENTACION (Ft. Trippie Redd)",
+        cover_art: "https://images.genius.com/3909b41f2c27e688e4caec3637cdba36.1000x1000x1.png"
+      },
+      {
+        id: 6419329,
+        title: "Gone",
+        artist_names: "ROSÉ",
+        cover_art: "https://images.genius.com/e8a9c7c30efdb765f5a8428364f0a895.1000x1000x1.png"
+      },
+      {
+        id: 299177,
+        title: "Drunk in Love",
+        artist_names: "Beyoncé (Ft. JAY-Z)",
+        cover_art: "https://images.genius.com/822e0619fe28f3e35aba4eba567111e8.1000x1000x1.png"
+      },
+      {
+            "id": 43,
+            "title": "Juicy",
+            "artist_names": "The Notorious B.I.G.",
+            "cover_art": "https://images.genius.com/0dcf916a5c93169e88b27c378d58742e.1000x1000x1.png"
+        },
+        {
+          id: 711649,
+          title: "ULTIMATE",
+          artist_names: "Denzel Curry",
+          cover_art: "https://images.genius.com/e6278593a52eb5369b6ce6306ae494c1.1000x1000x1.png"
+        },
     ]);
     setMostDiscussed([
       {
@@ -95,9 +180,39 @@ export default function Home() {
       },
       {
         id: 205311,
-        title: "Don’t Stop Me Now",
+        title: "Don't Stop Me Now",
         artist_names: "Queen",
         cover_art: "https://images.genius.com/aface99ac22323aec35a2841f57af5c1.600x595x1.jpg"
+      },
+      {
+        id: 92464,
+        title: "Love Sosa",
+        artist_names: "Chief Keef",
+        cover_art: "https://images.genius.com/45653129f1bada90a3803e0abd3e04e7.800x800x1.png"
+      },
+      {
+        id: 3422526,
+        title: "lovely",
+        artist_names: "Billie Eilish & Khalid",
+        cover_art: "https://images.genius.com/0a59a8c2c66bb9b588c5f68d9f7acd22.1000x1000x1.png"
+      },
+      {
+        id: 3182605,
+        title: "Fuck Love",
+        artist_names: "XXXTENTACION (Ft. Trippie Redd)",
+        cover_art: "https://images.genius.com/3909b41f2c27e688e4caec3637cdba36.1000x1000x1.png"
+      },
+      {
+        id: 191,
+        title: "Big Poppa",
+        artist_names: "The Notorious B.I.G.",
+        cover_art: "https://images.genius.com/514706123e1556e4d0c33474516ec2f3.1000x1000x1.png"
+      },
+      {
+        id: 570825,
+        title: "No Flockin",
+        artist_names: "Kodak Black",
+        cover_art: "https://images.genius.com/cee9f34bdb116b81d4b60b0b207fee62.1000x1000x1.png"
       }
     ]);
   }, []);
@@ -106,7 +221,7 @@ export default function Home() {
   async function checkAnalysisExists(artist, track) {
     try {
       const res = await fetch(
-        `/api/analysisCheck?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`
+        `${BASE_URL}/api/analysisCheck?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`
       );
       const data = await res.json();
       return data.exists || false;
@@ -160,50 +275,7 @@ export default function Home() {
               <span className="nav-link" onClick={() => alert('About page coming soon!')}>About</span>
             </div>
           </div>
-          {/* <div className="search-wrapper-header" ref={searchWrapperRef}>
-            <form onSubmit={handleSearch} className="search-form-header">
-              <div className="search-input-wrapper-header">
-                <span className="search-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#777" viewBox="0 0 24 24">
-                    <path d="M21.707 20.293l-5.387-5.387a7.5 7.5 0 10-1.414 1.414l5.387 5.387a1 1 0 001.414-1.414zM10.5 16a5.5 5.5 0 110-11 5.5 5.5 0 010 11z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onFocus={() => {
-                    if (query.trim().length > 2) setShowSuggestions(true);
-                  }}
-                />
-              </div>
-            </form>
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="suggestions-dropdown">
-                {suggestions.slice(0, 5).map((s) => (
-                  <div
-                    key={s.id}
-                    className="suggestion-item"
-                    onClick={() => handleSuggestionClick(s)}
-                  >
-                    {s.cover_art && (
-                      <img
-                        src={s.cover_art}
-                        alt="Cover"
-                        className="suggestion-cover"
-                      />
-                    )}
-                    <div className="suggestion-text">
-                      <span className="suggestion-title">
-                        {s.title} – {s.artist_names}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div> */}
+          
           <div className="header-right">
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
@@ -354,7 +426,7 @@ export default function Home() {
 
       <style jsx>{`
         .dark-bg {
-          background: linear-gradient(135deg,rgb(51, 46, 78),rgb(40, 36, 58), #13111C);
+          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
           min-height: 100vh;
         }
         .header {
@@ -369,7 +441,7 @@ export default function Home() {
           justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          background: rgba(62, 58, 75, 0.85);
+          background: rgba(106, 103, 116, 0.85);
           backdrop-filter: blur(10px);
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;
@@ -559,50 +631,39 @@ export default function Home() {
         }
         .browse-sections {
           width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 20px;
         }
         .section-row {
-          margin-bottom: 10px;
+          margin-bottom: 40px;
         }
         .section-row h2 {
           font-size: 1.2rem;
-          margin-bottom: 10px;
+          margin-bottom: 20px;
           color: #bbd;
         }
         .horiz-scroll {
-          display: flex;
-          gap: 12px;
-          overflow-x: auto;
-          padding-bottom: 10px;
-
-          /* NEW LINES */
-          padding-right: 60px; /* Increase if you want more partial display */
-          margin-right: -60px; /* Must match padding-right */
-        }
-        .horiz-scroll::-webkit-scrollbar {
-          height: 8px;
-        }
-        .horiz-scroll::-webkit-scrollbar-thumb {
-          background-color: #ccc;
-          border-radius: 4px;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 20px;
+          width: 100%;
         }
         .song-card {
-          flex: 0 0 auto;
-          width: 120px;
+          width: 100%;
           cursor: pointer;
           display: flex;
           flex-direction: column;
         }
         .cover-wrapper {
           width: 100%;
-          height: 120px;
+          aspect-ratio: 1;
           background: #f2f2f2;
           border-radius: 8px;
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
-
-          /* NEW LINE */
           box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
         }
         .cover-img {

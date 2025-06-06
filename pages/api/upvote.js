@@ -1,6 +1,6 @@
 // File: pages/api/upvote.js
-import { pool } from '../../lib/db.js';
-import { triggerReAnalysis } from '../../lib/reanalysis.js';
+const { pool } = require('../../lib/db.js');
+const { triggerReAnalysis } = require('../../lib/reanalysis.js');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

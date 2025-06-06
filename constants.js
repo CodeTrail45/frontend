@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://localhost:8000';
+export const BASE_URL = 'http://107.20.46.108:8000';
 
 export const API_ENDPOINTS = {
   SEARCH_LYRICS: `${BASE_URL}/search_lyrics`,

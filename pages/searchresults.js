@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
+import { BASE_URL } from '../constants';
 
 export default function SearchResults() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function SearchResults() {
   useEffect(() => {
     if (!track_name) return;
     setLoading(true);
-    fetch(`http://localhost:8000/search_lyrics?track_name=${encodeURIComponent(track_name)}`)
+    fetch(`${BASE_URL}/search_lyrics?track_name=${encodeURIComponent(track_name)}`)
       .then((res) => res.json())
       .then((data) => {
         setResults(data.results || []);
@@ -28,7 +29,7 @@ export default function SearchResults() {
   useEffect(() => {
     if (query.trim().length > 2) {
       const timer = setTimeout(() => {
-        fetch(`/api/search?q=${encodeURIComponent(query.trim())}`)
+        fetch(`${BASE_URL}/api/search?q=${encodeURIComponent(query.trim())}`)
           .then((res) => res.json())
           .then((data) => {
             setSuggestions(data.results || []);
@@ -167,7 +168,7 @@ export default function SearchResults() {
       </div>
       <style jsx>{`
         .dark-bg {
-          background: linear-gradient(135deg, #13111C, #1e1b2c, #292541);
+          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
           min-height: 100vh;
         }
         .header {
@@ -182,7 +183,7 @@ export default function SearchResults() {
           justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          background: rgba(19, 17, 28, 0.85);
+          background: rgba(106, 103, 116, 0.85);
           backdrop-filter: blur(10px);
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;

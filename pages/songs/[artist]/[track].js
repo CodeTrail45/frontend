@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { pool } from '../../../lib/db.js';
-import { Vibrant } from 'node-vibrant/browser';
+import axios from 'axios';
+const { pool } = require('../../../lib/db.js');
+const Vibrant = require('node-vibrant');
 
 // Helper to count total comments (including one level of replies).
 function countComments(comments) {
@@ -15,172 +16,59 @@ function countComments(comments) {
 const BASE_URL = process.env.SEARCH_API_URL || 'http://localhost:8000';
 
 export async function getServerSideProps(context) {
-  const { artist, track } = context.params;
-  const safeArtist = decodeURIComponent(artist).trim();
-  const safeTrack = decodeURIComponent(track).trim();
-
-  let existingAnalysis = null;
-  let coverArt = '';
-  let analysisId = null;
-  let version = 1;
-  let originalAnalysisId = null;
-
-  // 1) Check if an analysis exists for this song.
-  const existingRes = await pool.query(
-    `SELECT a.analysis_id, a.ai_response, a.version, a.original_analysis_id
-     FROM analyses a
-     JOIN songs s ON a.song_id = s.song_id
-     WHERE s.artist = $1 AND s.track = $2
-     ORDER BY a.version DESC
-     LIMIT 1`,
-    [safeArtist, safeTrack]
-  );
-
-  if (existingRes.rows.length > 0) {
-    try {
-      const row = existingRes.rows[0];
-      const parsed = JSON.parse(row.ai_response);
-      if ((parsed.sectionAnalyses && parsed.sectionAnalyses.length > 0) || parsed.introduction) {
-        existingAnalysis = parsed;
-        coverArt = parsed.coverArt || '';
-        analysisId = row.analysis_id;
-        version = row.version;
-        // Use original_analysis_id if available; otherwise default to analysisId.
-        originalAnalysisId = row.original_analysis_id || row.analysis_id;
+  const { artist, track } = context.query;
+  
+  try {
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/song-details?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`);
+    return {
+      props: {
+        initialData: response.data
       }
-    } catch (err) {
-      console.error('Error parsing existing analysis JSON:', err);
-    }
-  }
-
-  // 2) If no valid analysis exists, call /search_lyrics and /analyze_lyrics, then insert the new analysis.
-  if (!existingAnalysis) {
-    const searchUrl = `${BASE_URL}/search_lyrics?artist_name=${encodeURIComponent(
-      safeArtist
-    )}&track_name=${encodeURIComponent(safeTrack)}`;
-    let searchJson;
-    try {
-      const searchRes = await fetch(searchUrl);
-      if (!searchRes.ok) {
-        return { notFound: true };
+    };
+  } catch (error) {
+    console.error('Error fetching initial data:', error);
+    return {
+      props: {
+        initialData: null
       }
-      searchJson = await searchRes.json();
-    } catch (err) {
-      console.error('Error calling /search_lyrics:', err);
-      return { notFound: true };
-    }
-    const { results = [] } = searchJson;
-    if (results.length === 0) {
-      return { notFound: true };
-    }
-    const recordId = results[0].id;
-    coverArt = results[0].cover_art || '';
-
-    const analyzeUrl = `${BASE_URL}/analyze_lyrics?record_id=${encodeURIComponent(
-      recordId
-    )}&track=${encodeURIComponent(safeTrack)}&artist=${encodeURIComponent(safeArtist)}`;
-    let analyzeJson;
-    try {
-      const analyzeRes = await fetch(analyzeUrl);
-      if (!analyzeRes.ok) {
-        return { notFound: true };
-      }
-      analyzeJson = await analyzeRes.json();
-    } catch (err) {
-      console.error('Error calling /analyze_lyrics:', err);
-      return { notFound: true };
-    }
-    const finalAnalysis = analyzeJson.analysis || {};
-    finalAnalysis.coverArt = coverArt;
-
-    // Insert or retrieve the song row.
-    const songRes = await pool.query(
-      'SELECT song_id FROM songs WHERE artist=$1 AND track=$2 LIMIT 1',
-      [safeArtist, safeTrack]
-    );
-    let songId;
-    if (songRes.rows.length === 0) {
-      const insSongRes = await pool.query(
-        'INSERT INTO songs (artist, track) VALUES ($1, $2) RETURNING song_id',
-        [safeArtist, safeTrack]
-      );
-      songId = insSongRes.rows[0].song_id;
-    } else {
-      songId = songRes.rows[0].song_id;
-    }
-
-    const insRes = await pool.query(
-      'INSERT INTO analyses (song_id, version, ai_response) VALUES ($1, $2, $3) RETURNING analysis_id',
-      [songId, 1, JSON.stringify(finalAnalysis)]
-    );
-    analysisId = insRes.rows[0].analysis_id;
-    version = 1;
-    // Set original_analysis_id equal to analysisId for a new analysis.
-    await pool.query(
-      'UPDATE analyses SET original_analysis_id = $1 WHERE analysis_id = $1',
-      [analysisId]
-    );
-    originalAnalysisId = analysisId;
-    existingAnalysis = finalAnalysis;
+    };
   }
-
-  // 3) Log a view for the current analysis row.
-  await pool.query('INSERT INTO analysis_view_logs (analysis_id) VALUES ($1)', [analysisId]);
-  // Sum view logs across all analyses sharing the same original_analysis_id.
-  const viewRes = await pool.query(
-    `SELECT COUNT(*) AS total_views FROM analysis_view_logs
-     WHERE analysis_id IN (
-       SELECT analysis_id FROM analyses WHERE original_analysis_id = $1
-     )`,
-    [originalAnalysisId]
-  );
-  const viewCount = parseInt(viewRes.rows[0].total_views, 10);
-
-  // 4) Query comment count (for the current analysis only).
-  const commentRes = await pool.query(
-    'SELECT COUNT(*) AS comment_count FROM comments WHERE analysis_id = $1',
-    [analysisId]
-  );
-  const commentCount = parseInt(commentRes.rows[0].comment_count, 10);
-
-  console.log('Cover art URL:', coverArt);
-  if (!coverArt || coverArt === '') {
-    coverArt = 'https://via.placeholder.com/300?text=No+Cover+Art';
-  }
-
-  return {
-    props: {
-      artist: safeArtist,
-      track: safeTrack,
-      analysis: existingAnalysis,
-      coverArt,
-      version,
-      viewCount,
-      commentCount,
-    },
-  };
 }
 
-export default function SongPage({
-  artist,
-  track,
-  analysis,
-  coverArt,
-  version,
-  viewCount,
-  commentCount: initialCommentCount,
-}) {
+export default function SongPage({ initialData }) {
   const router = useRouter();
-  const [dominantColor, setDominantColor] = useState(analysis.dominantColor || '#000');
+  const { artist, track } = router.query;
+  const [songData, setSongData] = useState(initialData);
+  const [loading, setLoading] = useState(!initialData);
+  const [dominantColor, setDominantColor] = useState(songData?.analysis?.dominantColor || '#000');
   const [comments, setComments] = useState([]);
   const [topLevelText, setTopLevelText] = useState('');
   const [replyTexts, setReplyTexts] = useState({});
-  const [commentCount, setCommentCount] = useState(initialCommentCount);
+  const [commentCount, setCommentCount] = useState(songData?.commentCount || 0);
+
+  useEffect(() => {
+    if (!artist || !track) return;
+
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`/api/song-details?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`);
+        setSongData(response.data);
+      } catch (error) {
+        console.error('Error fetching song data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!initialData) {
+      fetchData();
+    }
+  }, [artist, track, initialData]);
 
   // Function to extract dominant color after cover art image loads.
   const handleCoverArtLoad = useCallback(() => {
-    if (coverArt) {
-      Vibrant.from(coverArt)
+    if (songData?.coverArt) {
+      Vibrant.from(songData.coverArt)
         .getPalette()
         .then((palette) => {
           const primary = palette?.Vibrant?.hex || '#000';
@@ -191,7 +79,7 @@ export default function SongPage({
           setDominantColor('#000');
         });
     }
-  }, [coverArt]);
+  }, [songData.coverArt]);
 
   // Reload comments from /api/comments.
   async function reloadComments() {
@@ -343,53 +231,14 @@ export default function SongPage({
     );
   }
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
       <Head>
-        {/* SEO Meta Tags */}
-        <title>{`${track} by ${artist} – In-Depth Song Analysis (v${version})`}</title>
-        <meta
-          name="description"
-          content={
-            analysis.introduction ||
-            `Explore an in-depth analysis of "${track}" by ${artist}. Discover thematic insights and cultural nuances that resonate with fans.`
-          }
-        />
-        <link
-          rel="canonical"
-          href={`https://yourdomain.com/songs/${encodeURIComponent(artist)}/${encodeURIComponent(track)}`}
-        />
-        <meta property="og:title" content={`${track} by ${artist} – In-Depth Song Analysis (v${version})`} />
-        <meta
-          property="og:description"
-          content={
-            analysis.introduction ||
-            `Explore an in-depth analysis of "${track}" by ${artist}. Discover thematic insights and cultural nuances that resonate with fans.`
-          }
-        />
-        <meta property="og:type" content="article" />
-        <meta
-          property="og:url"
-          content={`https://yourdomain.com/songs/${encodeURIComponent(artist)}/${encodeURIComponent(track)}`}
-        />
-        <meta
-          property="og:image"
-          content={analysis.coverArt || 'https://via.placeholder.com/300?text=No+Cover+Art'}
-        />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`${track} by ${artist} – In-Depth Song Analysis (v${version})`} />
-        <meta
-          name="twitter:description"
-          content={
-            analysis.introduction ||
-            `Explore an in-depth analysis of "${track}" by ${artist}. Discover thematic insights and cultural nuances that resonate with fans.`
-          }
-        />
-        <meta
-          name="twitter:image"
-          content={analysis.coverArt || 'https://via.placeholder.com/300?text=No+Cover+Art'}
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{songData?.track || 'Song'} by {songData?.artist || 'Artist'} - Scalpel</title>
       </Head>
 
       {/* Root container with default white background */}
@@ -413,7 +262,7 @@ export default function SongPage({
         >
           <img
             className="analysis-cover-art"
-            src={coverArt}
+            src={songData?.coverArt}
             alt="Cover Art"
             onLoad={handleCoverArtLoad}
           />
@@ -429,7 +278,7 @@ export default function SongPage({
               <svg viewBox="0 0 18 12" width="18" height="12" fill="currentColor">
                 <path d="M9 0C4.9 0 1.2 2.4 0 6c1.2 3.6 4.9 6 9 6s7.8-2.4 9-6c-1.2-3.6-4.9-6-9-6zm0 9c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z" />
               </svg>
-              <span>{viewCount}</span>
+              <span>{songData?.viewCount}</span>
             </div>
             <div className="analysis-stat">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -441,19 +290,19 @@ export default function SongPage({
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                 <path d="M4 4h16v2h-16v-2zm0 5h16v2h-16v-2zm0 5h16v2h-16v-2z" />
               </svg>
-              <span>{version ? version - 1 : 0}</span>
+              <span>{songData?.version ? songData.version - 1 : 0}</span>
             </div>
           </section>
 
           {/* Analysis text */}
           <section className="analysis-content">
-            {analysis.overallHeadline && (
-              <h2 className="analysis-headline">{analysis.overallHeadline}</h2>
+            {songData?.analysis?.overallHeadline && (
+              <h2 className="analysis-headline">{songData.analysis.overallHeadline}</h2>
             )}
-            {analysis.introduction && (
-              <p className="analysis-intro">{analysis.introduction}</p>
+            {songData?.analysis?.introduction && (
+              <p className="analysis-intro">{songData.analysis.introduction}</p>
             )}
-            {analysis.sectionAnalyses?.map((sec, idx) => (
+            {songData?.analysis?.sectionAnalyses?.map((sec, idx) => (
               <div key={idx} className="analysis-block">
                 <h3 className="analysis-section-title">
                   {sec.sectionName.toUpperCase()}
@@ -465,8 +314,8 @@ export default function SongPage({
                 <p className="analysis-text">{sec.analysis}</p>
               </div>
             ))}
-            {analysis.conclusion && (
-              <p className="analysis-conclusion">{analysis.conclusion}</p>
+            {songData?.analysis?.conclusion && (
+              <p className="analysis-conclusion">{songData.analysis.conclusion}</p>
             )}
           </section>
 

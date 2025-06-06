@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
   try {
     // Use the SEARCH_API_URL environment variable if available.
-    const baseUrl = process.env.SEARCH_API_URL || 'http://localhost:8000';
+    const baseUrl = process.env.SEARCH_API_URL || 'http://107.20.46.108:8000';
     // Call the FastAPI search endpoint.
     // Adjust the parameter name if needed. Here we pass "q".
     const response = await axios.get(`${baseUrl}/search_lyrics`, {

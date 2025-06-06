@@ -1,5 +1,5 @@
-import { pool } from '../../../lib/db.js';
-import { getClientIp } from '../../../lib/ipUtils.js';
+const { pool } = require('../../../lib/db.js');
+const { getClientIp } = require('../../../lib/ipUtils.js');
 
 // Helper to nest replies
 function buildNestedComments(rows) {

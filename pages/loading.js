@@ -55,7 +55,7 @@ export default function LoadingPage() {
       </div>
       <style jsx>{`
         .dark-bg {
-          background: linear-gradient(135deg, #13111C, #1e1b2c, #292541);
+          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
           min-height: 100vh;
         }
         .page-container {
@@ -77,7 +77,7 @@ export default function LoadingPage() {
           justify-content: space-between;
           padding-left: 20px;
           padding-right: 20px;
-          background: rgba(19, 17, 28, 0.85);
+          background: rgba(106, 103, 116, 0.85);
           backdrop-filter: blur(10px);
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
           z-index: 1000;

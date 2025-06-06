@@ -1,18 +1,23 @@
 {
   "name": "nextjs-app",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "next lint",
+    "clean": "rimraf .next",
     "setup-db": "node setup-db.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
     "next": "latest",
+    "node-vibrant": "^4.0.3",
+    "pg": "^8.16.0",
     "react": "latest",
-    "react-dom": "latest",
-    "pg": "^8.16.0"
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
   }
 }

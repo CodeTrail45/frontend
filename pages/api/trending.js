@@ -1,5 +1,5 @@
 // File: pages/api/trending.js
-import { pool } from '../../lib/db';
+const { pool } = require('../../lib/db.js');
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
