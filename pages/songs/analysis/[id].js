@@ -9,7 +9,7 @@ export default function SongAnalysis() {
   const [analysis, setAnalysis] = useState(null);
   const [lyrics, setLyrics] = useState('');
   const [coverArt, setCoverArt] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [lyricsLoading, setLyricsLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -30,7 +30,6 @@ export default function SongAnalysis() {
 
   useEffect(() => {
     if (!id || !title || !artist) return;
-    setLoading(true);
     // Get cover art from search_lyrics for this id
     fetch(`${API_ENDPOINTS.SEARCH_LYRICS}?track_name=${encodeURIComponent(title)}`)
       .then((res) => res.json())
@@ -39,14 +38,15 @@ export default function SongAnalysis() {
         if (found) setCoverArt(found.cover_art);
       });
     // Get analysis and lyrics
+    setLyricsLoading(true);
     fetch(`${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
       .then((res) => res.json())
       .then((data) => {
         setAnalysis(data.analysis || null);
         setLyrics(data.lyrics || '');
-        setLoading(false);
+        setLyricsLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => setLyricsLoading(false));
   }, [id, title, artist]);
 
   // Suggestions logic
@@ -525,209 +525,206 @@ export default function SongAnalysis() {
         )}
 
         <div className="futuristic-background">
-          {loading ? (
-            <div className="loading-container">
-              <div className="pulse-loader"></div>
-              <div className="loading-text">Loading song data...</div>
-            </div>
-          ) : (
-            <div className="song-content-container">
-              <div className="song-header-section">
-                <div className="cover-art-container">
-                  {coverArt ? (
-                    <img src={coverArt} alt={title} className="cover-img-modern" />
-                  ) : (
-                    <div className="cover-placeholder">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                      </svg>
-                    </div>
-                  )}
-                  <div className="pulse-rings"></div>
-                </div>
-                <div className="song-info">
-                  <h1 className="song-title-modern">{title}</h1>
-                  <h2 className="song-artist-modern">{artist}</h2>
-                  <div className="song-stats">
-                    <div className="stat-item">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                      </svg>
-                      <span>2.4K</span>
-                    </div>
-                    <div className="stat-item">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                      </svg>
-                      <span>4.8</span>
-                    </div>
-                    <div className="stat-item">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                      </svg>
-                      <span>{comments.length}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="content-tabs">
-                <div 
-                  className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
-                  onClick={() => setActiveSection('lyrics')}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                  Lyrics
-                </div>
-                <div 
-                  className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveSection('comments');
-                    // Force a comments refresh when tab is clicked
-                    if (id) {
-                      fetch(`${BASE_URL}/api/songs/${id}/comments`)
-                        .then(async (res) => {
-                          if (res.status === 404) {
-                            return [];
-                          }
-                          if (!res.ok) {
-                            console.warn(`Comments fetch returned status ${res.status}`);
-                            return [];
-                          }
-                          try {
-                            const data = await res.json();
-                            return Array.isArray(data) ? data : [];
-                          } catch (err) {
-                            console.warn('Error parsing comments response:', err);
-                            return [];
-                          }
-                        })
-                        .then((data) => {
-                          setComments(data);
-                        })
-                        .catch((err) => {
-                          console.warn('Error in comments fetch:', err);
-                          setComments([]);
-                        });
-                    }
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  Comments
-                </div>
-              </div>
-
-              <div className="content-section">
-                {activeSection === 'lyrics' && (
-                  <div className="lyrics-section-modern">
-                    <div className="lyrics-header">
-                      <h3>Lyrics</h3>
-                    </div>
-                    <div className="lyrics-content-modern">
-                      <pre>{lyrics}</pre>
-                    </div>
+          <div className="song-content-container">
+            <div className="song-header-section">
+              <div className="cover-art-container">
+                {coverArt ? (
+                  <img src={coverArt} alt={title} className="cover-img-modern" />
+                ) : (
+                  <div className="cover-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <line x1="12" y1="1" x2="12" y2="3"></line>
+                      <line x1="12" y1="21" x2="12" y2="23"></line>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                      <line x1="1" y1="12" x2="3" y2="12"></line>
+                      <line x1="21" y1="12" x2="23" y2="12"></line>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
                   </div>
                 )}
+                <div className="pulse-rings"></div>
+              </div>
+              <div className="song-info">
+                <h1 className="song-title-modern">{title}</h1>
+                <h2 className="song-artist-modern">{artist}</h2>
+                <div className="song-stats">
+                  <div className="stat-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span>2.4K</span>
+                  </div>
+                  <div className="stat-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span>4.8</span>
+                  </div>
+                  <div className="stat-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>{comments.length}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                {activeSection === 'comments' && (
-                  <div className="comments-section">
-                    <div className="comment-form-container">
-                      <form onSubmit={handleAddComment} className="comment-form">
-                        <div className="user-avatar">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
-                        </div>
-                        <div className="comment-input-container">
-                          <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="comment-input"
-                          />
-                          <button type="submit" className="comment-submit">Post</button>
-                        </div>
-                      </form>
-                    </div>
-                    <div className="comments-list">
-                      {comments.map((comment) => {
-                        // Get stored user ID to check if comment belongs to current user
-                        const currentUserId = localStorage.getItem('userId');
-                        const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
-                        
-                        return (
-                          <div key={comment.id} className="comment-block">
-                            <div className="comment-avatar">
-                              <div className="avatar-circle">
-                                {comment.username ? comment.username[0].toUpperCase() : 'U'}
-                              </div>
-                            </div>
-                            <div className="comment-content">
-                              <div className="comment-header">
-                                <span className="comment-username">
-                                  {comment.username || 'Anonymous User'}
-                                </span>
-                                <span className="comment-time">
-                                  {new Date(comment.created_at).toLocaleDateString()}
-                                </span>
-                                {isCommentOwner && (
-                                  <button 
-                                    className="delete-button" 
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                    aria-label="Delete comment"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M3 6h18"></path>
-                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                      <line x1="10" y1="11" x2="10" y2="17"></line>
-                                      <line x1="14" y1="11" x2="14" y2="17"></line>
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                              <p className="comment-text">{comment.content}</p>
-                              <div className="comment-actions">
-                                <button 
-                                  className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
-                                  onClick={() => handleUpvoteComment(comment.id)}
-                                  disabled={userUpvotes[comment.id]}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
-                                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
-                                  </svg>
-                                  <span>{comment.upvote_count || 0}</span>
-                                </button>
-                              </div>
+            <div className="content-tabs">
+              <div 
+                className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
+                onClick={() => setActiveSection('lyrics')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Lyrics
+              </div>
+              <div 
+                className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSection('comments');
+                  // Force a comments refresh when tab is clicked
+                  if (id) {
+                    fetch(`${BASE_URL}/api/songs/${id}/comments`)
+                      .then(async (res) => {
+                        if (res.status === 404) {
+                          return [];
+                        }
+                        if (!res.ok) {
+                          console.warn(`Comments fetch returned status ${res.status}`);
+                          return [];
+                        }
+                        try {
+                          const data = await res.json();
+                          return Array.isArray(data) ? data : [];
+                        } catch (err) {
+                          console.warn('Error parsing comments response:', err);
+                          return [];
+                        }
+                      })
+                      .then((data) => {
+                        setComments(data);
+                      })
+                      .catch((err) => {
+                        console.warn('Error in comments fetch:', err);
+                        setComments([]);
+                      });
+                  }
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Comments
+              </div>
+            </div>
+
+            <div className="content-section">
+              {activeSection === 'lyrics' && (
+                <div className="lyrics-section-modern">
+                  <div className="lyrics-header">
+                    <h3>Lyrics</h3>
+                  </div>
+                  <div className="lyrics-content-modern">
+                    {lyricsLoading ? (
+                      <div className="loading-text">Analyzing...</div>
+                    ) : (
+                      <pre>{lyrics}</pre>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'comments' && (
+                <div className="comments-section">
+                  <div className="comment-form-container">
+                    <form onSubmit={handleAddComment} className="comment-form">
+                      <div className="user-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </div>
+                      <div className="comment-input-container">
+                        <input
+                          type="text"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Add a comment..."
+                          className="comment-input"
+                        />
+                        <button type="submit" className="comment-submit">Post</button>
+                      </div>
+                    </form>
+                  </div>
+                  <div className="comments-list">
+                    {comments.map((comment) => {
+                      // Get stored user ID to check if comment belongs to current user
+                      const currentUserId = localStorage.getItem('userId');
+                      const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
+                      
+                      return (
+                        <div key={comment.id} className="comment-block">
+                          <div className="comment-avatar">
+                            <div className="avatar-circle">
+                              {comment.username ? comment.username[0].toUpperCase() : 'U'}
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
+                          <div className="comment-content">
+                            <div className="comment-header">
+                              <span className="comment-username">
+                                {comment.username || 'Anonymous User'}
+                              </span>
+                              <span className="comment-time">
+                                {new Date(comment.created_at).toLocaleDateString()}
+                              </span>
+                              {isCommentOwner && (
+                                <button 
+                                  className="delete-button" 
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  aria-label="Delete comment"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                            <p className="comment-text">{comment.content}</p>
+                            <div className="comment-actions">
+                              <button 
+                                className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
+                                onClick={() => handleUpvoteComment(comment.id)}
+                                disabled={userUpvotes[comment.id]}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                </svg>
+                                <span>{comment.upvote_count || 0}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
       <style jsx>{`
@@ -961,46 +958,6 @@ export default function SongAnalysis() {
         }
         
         /* Song Content */
-        .loading-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 70vh;
-        }
-        
-        .pulse-loader {
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          background: linear-gradient(45deg, #8A2BE2, #FF1493);
-          margin-bottom: 24px;
-          position: relative;
-          animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-          0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.5);
-          }
-          70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 15px rgba(138, 43, 226, 0);
-          }
-          100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(138, 43, 226, 0);
-          }
-        }
-        
-        .loading-text {
-          font-size: 1.2rem;
-          color: rgba(255, 255, 255, 0.7);
-          font-weight: 500;
-          letter-spacing: 0.5px;
-        }
-        
         .song-content-container {
           max-width: 1200px;
           margin: 0 auto;

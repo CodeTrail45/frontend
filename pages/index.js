@@ -14,6 +14,12 @@ export default function Home() {
   const [mostDiscussed, setMostDiscussed] = useState([]);
   const searchWrapperRef = useRef(null);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [authError, setAuthError] = useState('');
+
   // 1) Search suggestions
   useEffect(() => {
     if (query.trim().length > 2) {
@@ -217,6 +223,60 @@ export default function Home() {
     ]);
   }, []);
 
+  // Check token on mount and on every focus
+  useEffect(() => {
+    function checkToken() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoggedIn(false);
+        return;
+      }
+      // Check expiry if JWT
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+          localStorage.removeItem('token');
+          setIsLoggedIn(false);
+          return;
+        }
+        setIsLoggedIn(true);
+      } catch {
+        setIsLoggedIn(true);
+      }
+    }
+    checkToken();
+    window.addEventListener('focus', checkToken);
+    return () => window.removeEventListener('focus', checkToken);
+  }, []);
+
+  function handleLogout() {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+  }
+
+  async function handleAuth(e) {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/${authMode === 'login' ? 'login' : 'register'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authForm)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('token', data.access_token);
+        setIsLoggedIn(true);
+        setShowAuthModal(false);
+        setAuthForm({ username: '', password: '' });
+      } else {
+        setAuthError(data.detail || 'Authentication failed');
+      }
+    } catch {
+      setAuthError('An error occurred. Please try again.');
+    }
+  }
+
   // Checking if analysis exists => skip loading if it does
   async function checkAnalysisExists(artist, track) {
     try {
@@ -277,6 +337,18 @@ export default function Home() {
           </div>
           
           <div className="header-right">
+            {isLoggedIn ? (
+              <button className="auth-button logout" onClick={handleLogout}>
+                Logout
+              </button>
+            ) : (
+              <button className="auth-button login" onClick={() => {
+                setAuthMode('login');
+                setShowAuthModal(true);
+              }}>
+                Login
+              </button>
+            )}
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
@@ -285,6 +357,68 @@ export default function Home() {
             </a>
           </div>
         </header>
+
+        {showAuthModal && (
+          <div className="auth-modal-overlay" onClick={() => setShowAuthModal(false)}>
+            <div className="auth-modal" onClick={e => e.stopPropagation()}>
+              <div className="auth-modal-header">
+                <h2>{authMode === 'login' ? 'Login' : 'Sign Up'}</h2>
+                <button className="close-button" onClick={() => setShowAuthModal(false)}>×</button>
+              </div>
+              <form onSubmit={handleAuth} className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="username">Username</label>
+                  <input
+                    type="text"
+                    id="username"
+                    value={authForm.username}
+                    onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <input
+                    type="password"
+                    id="password"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    required
+                  />
+                </div>
+                {authError && <div className="auth-error">{authError}</div>}
+                <button type="submit" className="auth-submit">
+                  {authMode === 'login' ? 'Login' : 'Sign Up'}
+                </button>
+                <div className="auth-switch">
+                  {authMode === 'login' ? (
+                    <p>
+                      Don't have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('signup')}
+                        className="switch-button"
+                      >
+                        Sign Up
+                      </button>
+                    </p>
+                  ) : (
+                    <p>
+                      Already have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('login')}
+                        className="switch-button"
+                      >
+                        Login
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="main-hero dark-main">
           <img
@@ -700,6 +834,134 @@ export default function Home() {
           font-size: 0.9rem;
           color: #999;
           padding: 10px 0;
+        }
+        .auth-button {
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          margin-right: 15px;
+        }
+        .auth-button.login {
+          background: linear-gradient(90deg, #8A2BE2, #FF1493);
+          color: white;
+        }
+        .auth-button.logout {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .auth-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .auth-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          backdrop-filter: blur(5px);
+        }
+        .auth-modal {
+          background: rgba(30, 27, 44, 0.95);
+          border-radius: 16px;
+          padding: 30px;
+          width: 90%;
+          max-width: 400px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .auth-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+        .auth-modal-header h2 {
+          color: white;
+          font-size: 1.5rem;
+          font-weight: 600;
+        }
+        .close-button {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0;
+          line-height: 1;
+        }
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .form-group label {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 0.9rem;
+        }
+        .form-group input {
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          font-size: 1rem;
+        }
+        .form-group input:focus {
+          outline: none;
+          border-color: #8A2BE2;
+          box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
+        }
+        .auth-error {
+          color: #ff4444;
+          font-size: 0.9rem;
+          text-align: center;
+        }
+        .auth-submit {
+          padding: 12px;
+          border-radius: 8px;
+          border: none;
+          background: linear-gradient(90deg, #8A2BE2, #FF1493);
+          color: white;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .auth-submit:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .auth-switch {
+          text-align: center;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.9rem;
+        }
+        .switch-button {
+          background: none;
+          border: none;
+          color: #8A2BE2;
+          cursor: pointer;
+          font-weight: 500;
+          padding: 0;
+        }
+        .switch-button:hover {
+          text-decoration: underline;
         }
       `}</style>
     </>
