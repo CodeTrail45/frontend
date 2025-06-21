@@ -454,7 +454,7 @@ export default function SongAnalysis() {
             )}
           </div>
           <div className="header-right">
-            {isLoggedIn ? (
+            {/* {isLoggedIn ? (
               <button className="auth-button logout" onClick={handleLogout}>
                 Logout
               </button>
@@ -465,7 +465,7 @@ export default function SongAnalysis() {
               }}>
                 Login
               </button>
-            )}
+            )} */}
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
@@ -1256,6 +1256,9 @@ export default function SongAnalysis() {
         
         .lyrics-content-modern pre {
           font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.9);
+          line-height: 1.6;
+          font-family: 'Inter', 'Poppins', sans-serif;
         }
         
         .loading-text {

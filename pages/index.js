@@ -337,7 +337,7 @@ export default function Home() {
           </div>
           
           <div className="header-right">
-            {isLoggedIn ? (
+            {/* {isLoggedIn ? (
               <button className="auth-button logout" onClick={handleLogout}>
                 Logout
               </button>
@@ -348,7 +348,7 @@ export default function Home() {
               }}>
                 Login
               </button>
-            )}
+            )} */}
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
