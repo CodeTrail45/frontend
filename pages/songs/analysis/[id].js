@@ -248,14 +248,11 @@ export default function SongAnalysis() {
       try {
         const data = await response.json();
         
-        // Update the comment's upvote count in the comments state immediately
-        setComments(prevComments => 
-          prevComments.map(comment => 
-            comment.id === commentId 
-              ? { ...comment, upvote_count: (comment.upvote_count || 0) + 1 }
-              : comment
-          )
-        );
+        // Update the local upvote count
+        setCommentUpvotes(prev => ({
+          ...prev,
+          [commentId]: (prev[commentId] || 0) + 1
+        }));
         
         // Save to userUpvotes state and localStorage to prevent multiple upvotes
         const updatedUpvotes = { ...userUpvotes, [commentId]: true };
@@ -263,8 +260,7 @@ export default function SongAnalysis() {
         localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
         
         // Check if the comment has reached 10 upvotes
-        const currentUpvotes = comments.find(c => c.id === commentId)?.upvote_count || 0;
-        if (currentUpvotes + 1 >= 10) {
+        if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
           setIsReanalyzing(true);
           try {
             // Get the current analysis data
@@ -592,99 +588,157 @@ export default function SongAnalysis() {
               </div>
             </div>
 
-            <div className="content-section">
-              <div className="lyrics-section-modern">
-                <div className="lyrics-header">
-                  <h3>Lyrics</h3>
-                </div>
-                <div className="lyrics-content-modern">
-                  {lyricsLoading ? (
-                    <div className="loading-text">Analyzing...</div>
-                  ) : isReanalyzing ? (
-                    <div className="loading-text">Reanalyzing...</div>
-                  ) : (
-                    <pre>{lyrics}</pre>
-                  )}
-                </div>
+            <div className="content-tabs">
+              <div 
+                className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
+                onClick={() => setActiveSection('lyrics')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Lyrics
               </div>
+              <div 
+                className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSection('comments');
+                  // Force a comments refresh when tab is clicked
+                  if (id) {
+                    fetch(`${BASE_URL}/api/songs/${id}/comments`)
+                      .then(async (res) => {
+                        if (res.status === 404) {
+                          return [];
+                        }
+                        if (!res.ok) {
+                          console.warn(`Comments fetch returned status ${res.status}`);
+                          return [];
+                        }
+                        try {
+                          const data = await res.json();
+                          return Array.isArray(data) ? data : [];
+                        } catch (err) {
+                          console.warn('Error parsing comments response:', err);
+                          return [];
+                        }
+                      })
+                      .then((data) => {
+                        setComments(data);
+                      })
+                      .catch((err) => {
+                        console.warn('Error in comments fetch:', err);
+                        setComments([]);
+                      });
+                  }
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Comments
+              </div>
+            </div>
 
-              <div className="comments-section">
-                <div className="comment-form-container">
-                  <form onSubmit={handleAddComment} className="comment-form">
-                    <div className="user-avatar">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    </div>
-                    <div className="comment-input-container">
-                      <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="comment-input"
-                      />
-                      <button type="submit" className="comment-submit">Post</button>
-                    </div>
-                  </form>
+            <div className="content-section">
+              {activeSection === 'lyrics' && (
+                <div className="lyrics-section-modern">
+                  <div className="lyrics-header">
+                    <h3>Lyrics</h3>
+                  </div>
+                  <div className="lyrics-content-modern">
+                    {lyricsLoading ? (
+                      <div className="loading-text">Analyzing...</div>
+                    ) : isReanalyzing ? (
+                      <div className="loading-text">Reanalyzing...</div>
+                    ) : (
+                      <pre>{lyrics}</pre>
+                    )}
+                  </div>
                 </div>
-                <div className="comments-list">
-                  {comments.map((comment) => {
-                    // Get stored user ID to check if comment belongs to current user
-                    const currentUserId = localStorage.getItem('userId');
-                    const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
-                    
-                    return (
-                      <div key={comment.id} className="comment-block">
-                        <div className="comment-avatar">
-                          <div className="avatar-circle">
-                            {comment.username ? comment.username[0].toUpperCase() : 'U'}
-                          </div>
-                        </div>
-                        <div className="comment-content">
-                          <div className="comment-header">
-                            <span className="comment-username">
-                              {comment.username || 'Anonymous User'}
-                            </span>
-                            <span className="comment-time">
-                              {new Date(comment.created_at).toLocaleDateString()}
-                            </span>
-                            {isCommentOwner && (
-                              <button 
-                                className="delete-button" 
-                                onClick={() => handleDeleteComment(comment.id)}
-                                aria-label="Delete comment"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M3 6h18"></path>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                          <p className="comment-text">{comment.content}</p>
-                          <div className="comment-actions">
-                            <button 
-                              className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
-                              onClick={() => handleUpvoteComment(comment.id)}
-                              disabled={userUpvotes[comment.id]}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
-                                <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
-                              </svg>
-                              <span>{comment.upvote_count || 0}</span>
-                            </button>
-                          </div>
-                        </div>
+              )}
+
+              {activeSection === 'comments' && (
+                <div className="comments-section">
+                  <div className="comment-form-container">
+                    <form onSubmit={handleAddComment} className="comment-form">
+                      <div className="user-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
                       </div>
-                    )
-                  })}
+                      <div className="comment-input-container">
+                        <input
+                          type="text"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Add a comment..."
+                          className="comment-input"
+                        />
+                        <button type="submit" className="comment-submit">Post</button>
+                      </div>
+                    </form>
+                  </div>
+                  <div className="comments-list">
+                    {comments.map((comment) => {
+                      // Get stored user ID to check if comment belongs to current user
+                      const currentUserId = localStorage.getItem('userId');
+                      const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
+                      
+                      return (
+                        <div key={comment.id} className="comment-block">
+                          <div className="comment-avatar">
+                            <div className="avatar-circle">
+                              {comment.username ? comment.username[0].toUpperCase() : 'U'}
+                            </div>
+                          </div>
+                          <div className="comment-content">
+                            <div className="comment-header">
+                              <span className="comment-username">
+                                {comment.username || 'Anonymous User'}
+                              </span>
+                              <span className="comment-time">
+                                {new Date(comment.created_at).toLocaleDateString()}
+                              </span>
+                              {isCommentOwner && (
+                                <button 
+                                  className="delete-button" 
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  aria-label="Delete comment"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                            <p className="comment-text">{comment.content}</p>
+                            <div className="comment-actions">
+                              <button 
+                                className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
+                                onClick={() => handleUpvoteComment(comment.id)}
+                                disabled={userUpvotes[comment.id]}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                </svg>
+                                <span>{comment.upvote_count || 0}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1069,6 +1123,59 @@ export default function SongAnalysis() {
           color: rgba(255, 255, 255, 0.5);
         }
         
+        .content-tabs {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 30px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          padding-bottom: 15px;
+        }
+        
+        .tab {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 18px;
+          font-size: 0.95rem;
+          color: rgba(255, 255, 255, 0.7);
+          cursor: pointer;
+          border-radius: 25px;
+          transition: all 0.3s cubic-bezier(.4,2,.6,1);
+          font-weight: 500;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid transparent;
+          background: linear-gradient(90deg, rgba(138,43,226,0.08), rgba(255,20,147,0.08));
+        }
+        .tab:hover {
+          color: #fff;
+          background: linear-gradient(90deg, rgba(138,43,226,0.18), rgba(255,20,147,0.18));
+          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.15);
+        }
+        .tab.active {
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.35), rgba(255, 20, 147, 0.35), rgba(138, 43, 226, 0.18));
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.25), 0 0 20px rgba(255, 20, 147, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          transform: translateY(-1px) scale(1.04);
+        }
+        .tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60%;
+          height: 2.5px;
+          background: linear-gradient(90deg, #8A2BE2, #FF1493, #8A2BE2);
+          border-radius: 1px;
+          animation: shimmer 2s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+        
         .content-section {
           min-height: 300px;
         }
@@ -1396,8 +1503,14 @@ export default function SongAnalysis() {
             height: 180px;
           }
           
-          .content-section {
-            padding: 20px 15px;
+          .content-tabs {
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+          }
+          
+          .content-tabs::-webkit-scrollbar {
+            display: none;
           }
           
           .lyrics-section-modern {
