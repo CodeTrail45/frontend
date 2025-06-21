@@ -18,6 +18,7 @@ export default function SongAnalysis() {
   const [newComment, setNewComment] = useState('');
   const [commentUpvotes, setCommentUpvotes] = useState({});
   const [userUpvotes, setUserUpvotes] = useState({});
+  const [activeSection, setActiveSection] = useState('lyrics');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
@@ -96,9 +97,9 @@ export default function SongAnalysis() {
     router.push(`/searchresults?track_name=${encodeURIComponent(item.title)}`);
   };
 
-  // Fetch comments when component mounts
+  // Fetch comments when comments tab is clicked
   useEffect(() => {
-    if (id) {
+    if (activeSection === 'comments' && id) {
       fetch(`${BASE_URL}/api/songs/${id}/comments`)
         .then(async (res) => {
           if (res.status === 404) {
@@ -132,7 +133,7 @@ export default function SongAnalysis() {
           setComments([]);
         });
     }
-  }, [id]);
+  }, [activeSection, id]);
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -252,6 +253,15 @@ export default function SongAnalysis() {
           ...prev,
           [commentId]: (prev[commentId] || 0) + 1
         }));
+        
+        // Update the comments state to immediately reflect the new upvote count
+        setComments(prevComments => 
+          prevComments.map(comment => 
+            comment.id === commentId 
+              ? { ...comment, upvote_count: (comment.upvote_count || 0) + 1 }
+              : comment
+          )
+        );
         
         // Save to userUpvotes state and localStorage to prevent multiple upvotes
         const updatedUpvotes = { ...userUpvotes, [commentId]: true };
@@ -588,7 +598,6 @@ export default function SongAnalysis() {
             </div>
 
             <div className="content-section">
-              {/* Lyrics Section */}
               <div className="lyrics-section-modern">
                 <div className="lyrics-header">
                   <h3>Lyrics</h3>
@@ -604,11 +613,7 @@ export default function SongAnalysis() {
                 </div>
               </div>
 
-              {/* Comments Section */}
               <div className="comments-section">
-                <div className="comments-header">
-                  <h3>Comments</h3>
-                </div>
                 <div className="comment-form-container">
                   <form onSubmit={handleAddComment} className="comment-form">
                     <div className="user-avatar">
@@ -1006,7 +1011,7 @@ export default function SongAnalysis() {
           bottom: -10px;
           border-radius: 20px;
           border: 1px solid rgba(255, 20, 147, 0.3);
-          animation: pulsate 4s linear infinite alternate;
+          animation: pulsate 4s linear infinite;
         }
         
         .pulse-rings::after {
@@ -1070,107 +1075,112 @@ export default function SongAnalysis() {
         }
         
         .content-section {
-          flex: 1;
-          padding: 30px;
-          max-width: 1200px;
-          margin: 0 auto;
-          width: 100%;
+          min-height: 300px;
         }
         
+        /* Lyrics Section */
         .lyrics-section-modern {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.08), rgba(255, 20, 147, 0.08));
-          border-radius: 20px;
-          padding: 30px;
-          margin-bottom: 40px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: linear-gradient(120deg, rgba(138,43,226,0.18) 0%, rgba(255,20,147,0.13) 100%);
           backdrop-filter: blur(10px);
+          border-radius: 16px;
+          padding: 30px;
           position: relative;
           overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          z-index: 1;
         }
-        
         .lyrics-section-modern::before {
           content: '';
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.05), rgba(255, 20, 147, 0.05));
-          border-radius: 20px;
-          animation: pulsate 4s linear infinite alternate;
+          top: 0; left: 0; right: 0; bottom: 0;
+          z-index: 0;
+          background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 20, 147, 0.18) 0, transparent 60%),
+            radial-gradient(circle at 80% 70%, rgba(138, 43, 226, 0.15) 0, transparent 60%),
+            linear-gradient(120deg, rgba(255,255,255,0.04) 0%, rgba(138,43,226,0.07) 100%);
+          pointer-events: none;
+          animation: lyrics-bg-move 10s ease-in-out infinite alternate;
+        }
+        @keyframes lyrics-bg-move {
+          0% {
+            background-position: 20% 30%, 80% 70%, 0% 0%;
+          }
+          100% {
+            background-position: 30% 40%, 70% 60%, 100% 100%;
+          }
+        }
+        .lyrics-section-modern:hover::before {
+          filter: brightness(1.08) blur(1.5px) drop-shadow(0 0 16px #ff1493aa);
+          transition: filter 0.4s cubic-bezier(.4,2,.6,1);
         }
         
         .lyrics-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 25px;
-          position: relative;
-          z-index: 1;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .lyrics-header h3 {
+          font-size: 1.4rem;
           color: #fff;
-          font-size: 1.5rem;
           font-weight: 600;
-          margin: 0;
         }
         
         .lyrics-content-modern {
           position: relative;
-          z-index: 1;
+          overflow-y: auto;
+          max-height: 500px;
+          padding-right: 10px;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        
+        .lyrics-content-modern::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .lyrics-content-modern::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .lyrics-content-modern::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
         }
         
         .lyrics-content-modern pre {
-          color: #fff;
+          font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.9);
+          line-height: 1.6;
           font-family: 'Inter', 'Poppins', sans-serif;
-          font-size: 1rem;
-          line-height: 1.8;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          margin: 0;
-          padding: 0;
         }
         
         .loading-text {
-          color: rgba(255, 255, 255, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
           font-size: 1.1rem;
-          text-align: center;
-          padding: 40px 0;
-        }
-        
-        .comments-section {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.08), rgba(255, 20, 147, 0.08));
-          border-radius: 20px;
-          padding: 30px;
+          color: rgba(255, 255, 255, 0.8);
+          font-weight: 500;
+          background: linear-gradient(90deg, rgba(138, 43, 226, 0.1), rgba(255, 20, 147, 0.1));
+          border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          position: relative;
-          overflow: hidden;
+          animation: pulse 2s ease-in-out infinite;
         }
         
-        .comments-section::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.05), rgba(255, 20, 147, 0.05));
-          border-radius: 20px;
+        @keyframes pulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
         
-        .comments-header {
-          margin-bottom: 25px;
-          position: relative;
-          z-index: 1;
-        }
-        
-        .comments-header h3 {
-          color: #fff;
-          font-size: 1.5rem;
-          font-weight: 600;
-          margin: 0;
+        /* Comments Section */
+        .comments-section {
+          margin-top: 10px;
         }
         
         .comment-form-container {
