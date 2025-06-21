@@ -560,8 +560,32 @@ export default function Home() {
 
       <style jsx>{`
         .dark-bg {
-          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
+          background: linear-gradient(135deg, rgb(120, 116, 146), rgb(52, 46, 79), rgb(164, 37, 130));
           min-height: 100vh;
+          position: relative;
+          overflow: hidden;
+        }
+        .dark-bg::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          z-index: 0;
+          background: radial-gradient(circle at 20% 30%, rgba(255, 20, 147, 0.12) 0, transparent 60%),
+                      radial-gradient(circle at 80% 70%, rgba(138, 43, 226, 0.10) 0, transparent 60%);
+          pointer-events: none;
+          animation: bg-move 12s ease-in-out infinite alternate;
+        }
+        @keyframes bg-move {
+          0% {
+            background-position: 20% 30%, 80% 70%;
+          }
+          100% {
+            background-position: 30% 40%, 70% 60%;
+          }
+        }
+        .page-container {
+          position: relative;
+          z-index: 1;
         }
         .header {
           position: fixed;

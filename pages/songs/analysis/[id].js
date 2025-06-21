@@ -27,6 +27,7 @@ export default function SongAnalysis() {
     password: ''
   });
   const [authError, setAuthError] = useState('');
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   useEffect(() => {
     if (!id || !title || !artist) return;
@@ -260,6 +261,7 @@ export default function SongAnalysis() {
         
         // Check if the comment has reached 10 upvotes
         if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
+          setIsReanalyzing(true);
           try {
             // Get the current analysis data
             const analysisResponse = await fetch(
@@ -268,6 +270,7 @@ export default function SongAnalysis() {
             
             if (!analysisResponse.ok) {
               console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
+              setIsReanalyzing(false);
               return;
             }
 
@@ -297,9 +300,20 @@ export default function SongAnalysis() {
 
             if (!reanalyzeResponse.ok) {
               console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
+            } else {
+              // Refresh the analysis data after successful reanalyze
+              const newAnalysisResponse = await fetch(
+                `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+              );
+              if (newAnalysisResponse.ok) {
+                const newAnalysisData = await newAnalysisResponse.json();
+                setAnalysis(newAnalysisData.analysis || null);
+              }
             }
           } catch (err) {
             console.warn('Error in re-analyze process:', err);
+          } finally {
+            setIsReanalyzing(false);
           }
         }
       } catch (err) {
@@ -637,6 +651,8 @@ export default function SongAnalysis() {
                   <div className="lyrics-content-modern">
                     {lyricsLoading ? (
                       <div className="loading-text">Analyzing...</div>
+                    ) : isReanalyzing ? (
+                      <div className="loading-text">Reanalyzing...</div>
                     ) : (
                       <pre>{lyrics}</pre>
                     )}
@@ -745,7 +761,7 @@ export default function SongAnalysis() {
         }
         
         .futuristic-background {
-          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(14, 13, 21));
+          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(164, 37, 130));
           min-height: 100vh;
           padding-top: calc(70px + env(safe-area-inset-top)); /* Add padding to push content below header */
           width: 100%;
@@ -1119,23 +1135,45 @@ export default function SongAnalysis() {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 8px 16px;
+          padding: 10px 18px;
           font-size: 0.95rem;
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
-          border-radius: 20px;
-          transition: all 0.2s ease;
+          border-radius: 25px;
+          transition: all 0.3s cubic-bezier(.4,2,.6,1);
           font-weight: 500;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid transparent;
+          background: linear-gradient(90deg, rgba(138,43,226,0.08), rgba(255,20,147,0.08));
         }
-        
         .tab:hover {
-          color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .tab.active {
-          background: linear-gradient(90deg, rgba(138, 43, 226, 0.2), rgba(255, 20, 147, 0.2));
           color: #fff;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: linear-gradient(90deg, rgba(138,43,226,0.18), rgba(255,20,147,0.18));
+          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.15);
+        }
+        .tab.active {
+          background: linear-gradient(135deg, rgba(138, 43, 226, 0.35), rgba(255, 20, 147, 0.35), rgba(138, 43, 226, 0.18));
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.25), 0 0 20px rgba(255, 20, 147, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          transform: translateY(-1px) scale(1.04);
+        }
+        .tab.active::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60%;
+          height: 2.5px;
+          background: linear-gradient(90deg, #8A2BE2, #FF1493, #8A2BE2);
+          border-radius: 1px;
+          animation: shimmer 2s ease-in-out infinite;
+        }
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
         
         .content-section {
@@ -1144,7 +1182,7 @@ export default function SongAnalysis() {
         
         /* Lyrics Section */
         .lyrics-section-modern {
-          background: rgba(30, 27, 44, 0.6);
+          background: linear-gradient(120deg, rgba(138,43,226,0.18) 0%, rgba(255,20,147,0.13) 100%);
           backdrop-filter: blur(10px);
           border-radius: 16px;
           padding: 30px;
@@ -1152,19 +1190,31 @@ export default function SongAnalysis() {
           overflow: hidden;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.05);
+          z-index: 1;
         }
-        
         .lyrics-section-modern::before {
           content: '';
           position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
+          top: 0; left: 0; right: 0; bottom: 0;
+          z-index: 0;
           background: 
-            radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.03) 0%, transparent 30%),
-            radial-gradient(circle at 90% 80%, rgba(255, 20, 147, 0.03) 0%, transparent 30%);
+            radial-gradient(circle at 20% 30%, rgba(255, 20, 147, 0.18) 0, transparent 60%),
+            radial-gradient(circle at 80% 70%, rgba(138, 43, 226, 0.15) 0, transparent 60%),
+            linear-gradient(120deg, rgba(255,255,255,0.04) 0%, rgba(138,43,226,0.07) 100%);
           pointer-events: none;
+          animation: lyrics-bg-move 10s ease-in-out infinite alternate;
+        }
+        @keyframes lyrics-bg-move {
+          0% {
+            background-position: 20% 30%, 80% 70%, 0% 0%;
+          }
+          100% {
+            background-position: 30% 40%, 70% 60%, 100% 100%;
+          }
+        }
+        .lyrics-section-modern:hover::before {
+          filter: brightness(1.08) blur(1.5px) drop-shadow(0 0 16px #ff1493aa);
+          transition: filter 0.4s cubic-bezier(.4,2,.6,1);
         }
         
         .lyrics-header {
@@ -1205,14 +1255,26 @@ export default function SongAnalysis() {
         }
         
         .lyrics-content-modern pre {
-          font-family: 'Inter', sans-serif;
-          font-size: 0.95rem;
-          line-height: 1.8;
-          white-space: pre-wrap;
-          color: rgba(255, 255, 255, 0.85);
-          padding: 10px 5px;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-          letter-spacing: 0.01em;
+          font-size: 0.9rem;
+        }
+        
+        .loading-text {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
+          font-size: 1.1rem;
+          color: rgba(255, 255, 255, 0.8);
+          font-weight: 500;
+          background: linear-gradient(90deg, rgba(138, 43, 226, 0.1), rgba(255, 20, 147, 0.1));
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
         
         /* Comments Section */
