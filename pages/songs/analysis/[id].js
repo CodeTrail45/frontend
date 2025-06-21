@@ -248,13 +248,7 @@ export default function SongAnalysis() {
       try {
         const data = await response.json();
         
-        // Update the local upvote count
-        setCommentUpvotes(prev => ({
-          ...prev,
-          [commentId]: (prev[commentId] || 0) + 1
-        }));
-        
-        // Update the comments state to immediately reflect the new upvote count
+        // Update the comment's upvote count in the comments state immediately
         setComments(prevComments => 
           prevComments.map(comment => 
             comment.id === commentId 
@@ -269,7 +263,8 @@ export default function SongAnalysis() {
         localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
         
         // Check if the comment has reached 10 upvotes
-        if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
+        const currentUpvotes = comments.find(c => c.id === commentId)?.upvote_count || 0;
+        if (currentUpvotes + 1 >= 10) {
           setIsReanalyzing(true);
           try {
             // Get the current analysis data
@@ -681,7 +676,7 @@ export default function SongAnalysis() {
                                 <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
                                 <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
                               </svg>
-                              <span>{commentUpvotes[comment.id] || comment.upvote_count || 0}</span>
+                              <span>{comment.upvote_count || 0}</span>
                             </button>
                           </div>
                         </div>
