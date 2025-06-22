@@ -465,68 +465,68 @@ export default function SongAnalysis() {
         return;
       }
       // Update the local upvote count and userUpvotes immediately
-      setCommentUpvotes(prev => ({
-        ...prev,
-        [commentId]: (prev[commentId] || 0) + 1
-      }));
-      const updatedUpvotes = { ...userUpvotes, [commentId]: true };
-      setUserUpvotes(updatedUpvotes);
-      localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
+        setCommentUpvotes(prev => ({
+          ...prev,
+          [commentId]: (prev[commentId] || 0) + 1
+        }));
+        const updatedUpvotes = { ...userUpvotes, [commentId]: true };
+        setUserUpvotes(updatedUpvotes);
+        localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
       // Also update the comment in the comments list (if present)
       setComments(prevComments => prevComments.map(comment =>
         comment.id === commentId
           ? { ...comment, upvote_count: (comment.upvote_count || 0) + 1 }
           : comment
       ));
-      // Check if the comment has reached 10 upvotes
-      if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
-        setIsReanalyzing(true);
-        try {
-          const analysisResponse = await fetch(
-            `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
-          );
-          if (!analysisResponse.ok) {
-            console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
-            setIsReanalyzing(false);
-            return;
-          }
-          const analysisData = await analysisResponse.json();
-          const reanalyzeResponse = await fetch(API_ENDPOINTS.RE_ANALYZE, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-              oldAnalysis: {
-                overallHeadline: analysisData.analysis.overallHeadline,
-                songTitle: analysisData.analysis.songTitle,
-                artist: analysisData.analysis.artist,
-                introduction: analysisData.analysis.introduction,
-                sectionAnalyses: analysisData.analysis.sectionAnalyses,
-                conclusion: analysisData.analysis.conclusion
-              },
-              newComment: comments.find(c => c.id === commentId)?.content || '',
-              artist: artist,
-              track: title
-            })
-          });
-          if (!reanalyzeResponse.ok) {
-            console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
-          } else {
-            const newAnalysisResponse = await fetch(
+        // Check if the comment has reached 10 upvotes
+        if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
+          setIsReanalyzing(true);
+          try {
+            const analysisResponse = await fetch(
               `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
             );
-            if (newAnalysisResponse.ok) {
-              const newAnalysisData = await newAnalysisResponse.json();
-              setAnalysis(newAnalysisData.analysis || null);
+            if (!analysisResponse.ok) {
+              console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
+              setIsReanalyzing(false);
+              return;
             }
+            const analysisData = await analysisResponse.json();
+            const reanalyzeResponse = await fetch(API_ENDPOINTS.RE_ANALYZE, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({
+                oldAnalysis: {
+                  overallHeadline: analysisData.analysis.overallHeadline,
+                  songTitle: analysisData.analysis.songTitle,
+                  artist: analysisData.analysis.artist,
+                  introduction: analysisData.analysis.introduction,
+                  sectionAnalyses: analysisData.analysis.sectionAnalyses,
+                  conclusion: analysisData.analysis.conclusion
+                },
+                newComment: comments.find(c => c.id === commentId)?.content || '',
+                artist: artist,
+                track: title
+              })
+            });
+            if (!reanalyzeResponse.ok) {
+              console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
+            } else {
+              const newAnalysisResponse = await fetch(
+                `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+              );
+              if (newAnalysisResponse.ok) {
+                const newAnalysisData = await newAnalysisResponse.json();
+                setAnalysis(newAnalysisData.analysis || null);
+              }
+            }
+          } catch (err) {
+            console.warn('Error in re-analyze process:', err);
+          } finally {
+            setIsReanalyzing(false);
           }
-        } catch (err) {
-          console.warn('Error in re-analyze process:', err);
-        } finally {
-          setIsReanalyzing(false);
-        }
       }
     } catch (err) {
       console.warn('Error upvoting comment:', err);

@@ -22,7 +22,7 @@ export default function Home() {
 
   // 1) Search suggestions
   useEffect(() => {
-    if (query.trim().length > 2) {
+    if (query.trim().length > 0) {
       const timer = setTimeout(() => {
         fetch(`${BASE_URL}/api/search?q=${encodeURIComponent(query.trim())}`)
           .then((res) => res.json())
@@ -448,7 +448,7 @@ export default function Home() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onFocus={() => {
-                    if (query.trim().length > 2) setShowSuggestions(true);
+                    if (query.trim().length > 0) setShowSuggestions(true);
                   }}
                 />
               </div>
