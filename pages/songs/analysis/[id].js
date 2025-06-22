@@ -28,17 +28,68 @@ export default function SongAnalysis() {
   });
   const [authError, setAuthError] = useState('');
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [dominantColors, setDominantColors] = useState(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+
+  const extractDominantColors = (imageUrl) => {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        try {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          const colorMap = {};
+          for (let i = 0; i < data.length; i += 16) {
+            const r = Math.floor(data[i] / 20) * 20;
+            const g = Math.floor(data[i + 1] / 20) * 20;
+            const b = Math.floor(data[i + 2] / 20) * 20;
+            const rgb = `${r},${g},${b}`;
+            colorMap[rgb] = (colorMap[rgb] || 0) + 1;
+          }
+          const sortedColors = Object.entries(colorMap)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3)
+            .map(([rgb]) => `rgb(${rgb})`);
+          const enhancedColors = sortedColors.map(color => {
+            const rgb = color.match(/\d+/g).map(Number);
+            const enhanced = rgb.map(val => Math.min(255, Math.max(30, val * 1.2)));
+            return `rgb(${enhanced.join(', ')})`;
+          });
+          resolve(enhancedColors.length >= 2 ? enhancedColors : ['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+        } catch (error) {
+          resolve(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+        }
+      };
+      img.onerror = () => {
+        resolve(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+      };
+      img.src = imageUrl;
+    });
+  };
 
   useEffect(() => {
     if (!id || !title || !artist) return;
-    // Get cover art from search_lyrics for this id
+    setIsPageLoading(true);
     fetch(`${API_ENDPOINTS.SEARCH_LYRICS}?track_name=${encodeURIComponent(title)}`)
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         const found = (data.results || []).find((s) => String(s.id) === String(id));
-        if (found) setCoverArt(found.cover_art);
+        if (found && found.cover_art) {
+          setCoverArt(found.cover_art);
+          try {
+            const colors = await extractDominantColors(found.cover_art);
+            setDominantColors(colors);
+          } catch (error) {
+            console.warn('Error extracting colors:', error);
+          }
+        }
       });
-    // Get analysis and lyrics
     setLyricsLoading(true);
     fetch(`${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
       .then((res) => res.json())
@@ -46,8 +97,12 @@ export default function SongAnalysis() {
         setAnalysis(data.analysis || null);
         setLyrics(data.lyrics || '');
         setLyricsLoading(false);
+        setIsPageLoading(false);
       })
-      .catch(() => setLyricsLoading(false));
+      .catch(() => {
+        setLyricsLoading(false);
+        setIsPageLoading(false);
+      });
   }, [id, title, artist]);
 
   // Suggestions logic
@@ -393,6 +448,146 @@ export default function SongAnalysis() {
     setIsLoggedIn(false);
   };
 
+  if (isPageLoading) {
+    return (
+      <>
+        <Head>
+          <title>Loading... | Scalpel</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        </Head>
+        <div className="loading-page">
+          <div className="loading-container">
+            <div className="loading-logo">
+              <img src="/logo2.png" alt="Scalpel" className="loading-logo-img" />
+            </div>
+            <div className="loading-content">
+              <div className="loading-title">Analyzing Your Song</div>
+              <div className="loading-subtitle">Extracting lyrics and insights...</div>
+              <div className="loading-progress">
+                <div className="progress-bar">
+                  <div className="progress-fill"></div>
+                </div>
+              </div>
+              <div className="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <style jsx>{`
+          .loading-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f0f0f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', 'Poppins', sans-serif;
+            overflow: hidden;
+            position: relative;
+          }
+          .loading-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+          }
+          .loading-container {
+            text-align: center;
+            z-index: 2;
+          }
+          .loading-logo {
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+          }
+          .loading-logo-img {
+            height: 60px;
+            width: auto;
+            filter: drop-shadow(0 4px 20px rgba(138, 43, 226, 0.3));
+          }
+          .loading-content {
+            max-width: 400px;
+          }
+          .loading-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #fff, #b19cd9, #ff1493);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 2s ease-in-out infinite;
+          }
+          .loading-subtitle {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 30px;
+          }
+          .loading-progress {
+            margin-bottom: 30px;
+          }
+          .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+          }
+          .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8A2BE2, #FF1493, #8A2BE2);
+            border-radius: 2px;
+            animation: progress 2s ease-in-out infinite;
+          }
+          .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+          }
+          .loading-dots span {
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(45deg, #8A2BE2, #FF1493);
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite;
+          }
+          .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+          }
+          .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+          }
+          @keyframes shimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+          }
+          @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+          }
+        `}</style>
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -538,7 +733,7 @@ export default function SongAnalysis() {
           </div>
         )}
 
-        <div className="futuristic-background">
+        <div className="futuristic-background" style={{ background: `linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]})` }}>
           <div className="song-content-container">
             <div className="song-header-section">
               <div className="cover-art-container">
@@ -648,7 +843,7 @@ export default function SongAnalysis() {
                   <div className="lyrics-header">
                     <h3>Lyrics</h3>
                   </div>
-                  <div className="lyrics-content-modern">
+                  <div className="lyrics-content-modern" style={{ background: `linear-gradient(135deg, rgba(${dominantColors[0].match(/\d+/g)?.join(', ')}, 0.1), rgba(${dominantColors[1].match(/\d+/g)?.join(', ')}, 0.15))`, border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '25px', fontSize: '0.95rem', lineHeight: '1.8', overflowY: 'auto', maxHeight: '500px', backdropFilter: 'blur(10px)', transition: 'background 0.8s ease' }}>
                     {lyricsLoading ? (
                       <div className="loading-text">Analyzing...</div>
                     ) : isReanalyzing ? (
@@ -761,7 +956,6 @@ export default function SongAnalysis() {
         }
         
         .futuristic-background {
-          background: linear-gradient(135deg,rgb(71, 66, 99),rgb(52, 46, 79),rgb(164, 37, 130));
           min-height: 100vh;
           padding-top: calc(70px + env(safe-area-inset-top)); /* Add padding to push content below header */
           width: 100%;
