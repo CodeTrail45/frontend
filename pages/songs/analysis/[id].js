@@ -939,8 +939,8 @@ export default function SongAnalysis() {
 
             <div className="content-tabs">
               <div 
-                className={`tab ${activeSection === 'analysis' ? 'active' : ''}`}
-                onClick={() => setActiveSection('analysis')}
+                className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
+                onClick={() => setActiveSection('lyrics')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -949,26 +949,53 @@ export default function SongAnalysis() {
                   <line x1="16" y1="17" x2="8" y2="17"></line>
                   <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                Analysis
+                Lyrics
               </div>
               <div 
-                className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
-                onClick={() => setActiveSection('lyrics')}
+                className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSection('comments');
+                  // Force a comments refresh when tab is clicked
+                  if (id) {
+                    fetch(`${BASE_URL}/api/songs/${id}/comments`)
+                      .then(async (res) => {
+                        if (res.status === 404) {
+                          return [];
+                        }
+                        if (!res.ok) {
+                          console.warn(`Comments fetch returned status ${res.status}`);
+                          return [];
+                        }
+                        try {
+                          const data = await res.json();
+                          return Array.isArray(data) ? data : [];
+                        } catch (err) {
+                          console.warn('Error parsing comments response:', err);
+                          return [];
+                        }
+                      })
+                      .then((data) => {
+                        setComments(data);
+                      })
+                      .catch((err) => {
+                        console.warn('Error in comments fetch:', err);
+                        setComments([]);
+                      });
+                  }
+                }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
-                Lyrics
+                Analysis
               </div>
             </div>
 
             <div className="content-section">
-              {activeSection === 'analysis' && (
-                <div className="lyrics-section-modern" style={{
-                  background: `linear-gradient(120deg, ${dominantColors[0] ? dominantColors[0].replace('rgb', 'rgba').replace(')', ', 0.18)') : 'rgba(138,43,226,0.18)'} 0%, ${dominantColors[1] ? dominantColors[1].replace('rgb', 'rgba').replace(')', ', 0.13)') : 'rgba(255,20,147,0.13)'} 100%)`
-                }}>
+              {activeSection === 'lyrics' && (
+                <div className="lyrics-section-modern">
                   <div className="lyrics-header">
-                    <h3>Analysis</h3>
+                    <h3>Lyrics</h3>
                   </div>
                   <div className="lyrics-content-modern">
                     {lyricsLoading ? (
@@ -976,59 +1003,45 @@ export default function SongAnalysis() {
                     ) : isReanalyzing ? (
                       <div className="loading-text">Reanalyzing...</div>
                     ) : (
-                      // Display analysis content here instead of lyrics
-                      analysis ? (
-                        <div className="analysis-content">
-                          {analysis.overallHeadline && (
-                            <div className="analysis-headline">
-                              <h4>{analysis.overallHeadline}</h4>
-                            </div>
-                          )}
-                          {analysis.introduction && (
-                            <div className="analysis-intro">
-                              <p>{analysis.introduction}</p>
-                            </div>
-                          )}
-                          {analysis.sectionAnalyses && analysis.sectionAnalyses.map((section, index) => (
-                            <div key={index} className="analysis-section">
-                              <h5>{section.title}</h5>
-                              <p>{section.content}</p>
-                            </div>
-                          ))}
-                          {analysis.conclusion && (
-                            <div className="analysis-conclusion">
-                              <p>{analysis.conclusion}</p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="no-analysis">No analysis available</div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeSection === 'lyrics' && (
-                <div className="lyrics-section-modern" style={{
-                  background: `linear-gradient(120deg, ${dominantColors[0] ? dominantColors[0].replace('rgb', 'rgba').replace(')', ', 0.18)') : 'rgba(138,43,226,0.18)'} 0%, ${dominantColors[1] ? dominantColors[1].replace('rgb', 'rgba').replace(')', ', 0.13)') : 'rgba(255,20,147,0.13)'} 100%)`
-                }}>
-                  <div className="lyrics-header">
-                    <h3>Lyrics</h3>
-                  </div>
-                  <div className="lyrics-content-modern">
-                    {lyricsLoading ? (
-                      <div className="loading-text">Loading lyrics...</div>
-                    ) : (
                       <pre>{lyrics}</pre>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Comments section moved below lyrics */}
-              {activeSection === 'lyrics' && (
+              {activeSection === 'comments' && (
                 <div className="comments-section">
+                  {/* Analysis Section */}
+                  {analysis && (
+                    <div className="lyrics-section-modern" style={{ marginBottom: 32 }}>
+                      <div className="lyrics-header">
+                        <h3>Analysis</h3>
+                      </div>
+                      <div className="lyrics-content-modern">
+                        {analysis.overallHeadline && (
+                          <div style={{ fontWeight: 700, fontSize: '1.1em', marginBottom: 12 }}>{analysis.overallHeadline}</div>
+                        )}
+                        {analysis.introduction && (
+                          <div style={{ marginBottom: 16 }}>{analysis.introduction}</div>
+                        )}
+                        {Array.isArray(analysis.sectionAnalyses) && analysis.sectionAnalyses.length > 0 && (
+                          <div style={{ marginBottom: 16 }}>
+                            {analysis.sectionAnalyses.map((section, idx) => (
+                              <div key={idx} style={{ marginBottom: 18 }}>
+                                {section.sectionName && <div style={{ fontWeight: 600, marginBottom: 4 }}>{section.sectionName}</div>}
+                                {section.verseSummary && <div style={{ fontStyle: 'italic', marginBottom: 2 }}>{section.verseSummary}</div>}
+                                {section.analysis && <div>{section.analysis}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {analysis.conclusion && (
+                          <div style={{ marginTop: 12, fontWeight: 500 }}>{analysis.conclusion}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Comment Form and List */}
                   <div className="comment-form-container">
                     <form onSubmit={handleAddComment} className="comment-form">
                       <div className="user-avatar">
@@ -1051,6 +1064,7 @@ export default function SongAnalysis() {
                   </div>
                   <div className="comments-list">
                     {comments.map((comment) => {
+                      // Get stored user ID to check if comment belongs to current user
                       const currentUserId = localStorage.getItem('userId');
                       const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
                       
