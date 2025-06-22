@@ -20,6 +20,12 @@ export default function Home() {
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [authError, setAuthError] = useState('');
 
+  // --- NAVBAR SEARCH BAR STATE (copied from [id].js) ---
+  const [navQuery, setNavQuery] = useState('');
+  const [navSuggestions, setNavSuggestions] = useState([]);
+  const [navShowSuggestions, setNavShowSuggestions] = useState(false);
+  const navSearchWrapperRef = useRef(null);
+
   // 1) Search suggestions
   useEffect(() => {
     if (query.trim().length > 0) {
@@ -316,6 +322,53 @@ export default function Home() {
     router.push(`/songs/${encodeURIComponent(artist)}/${encodeURIComponent(track)}`);
   };
 
+  // Suggestions logic (identical to [id].js)
+  useEffect(() => {
+    if (navQuery.trim().length > 0) {
+      const timer = setTimeout(() => {
+        fetch(`${BASE_URL}/search_lyrics?track_name=${encodeURIComponent(navQuery.trim())}`)
+          .then((res) => res.json())
+          .then((data) => {
+            setNavSuggestions(data.results || []);
+            setNavShowSuggestions(true);
+          })
+          .catch(() => {
+            setNavSuggestions([]);
+          });
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setNavSuggestions([]);
+      setNavShowSuggestions(false);
+    }
+  }, [navQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        navSearchWrapperRef.current &&
+        !navSearchWrapperRef.current.contains(e.target)
+      ) {
+        setNavShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleNavSearch = (e) => {
+    e.preventDefault();
+    if (navQuery.trim()) {
+      router.push(`/searchresults?track_name=${encodeURIComponent(navQuery.trim())}`);
+    }
+  };
+
+  const handleNavSuggestionClick = (item) => {
+    setNavQuery(item.title);
+    setNavShowSuggestions(false);
+    router.push(`/searchresults?track_name=${encodeURIComponent(item.title)}`);
+  };
+
   return (
     <>
       <Head>
@@ -332,23 +385,56 @@ export default function Home() {
           <div className="header-left">
             <img src="/logo2.png" alt="Scalpel Logo" className="header-logo" onClick={() => router.push('/')} />
             <div className="nav-links">
+              <span className="nav-link" onClick={() => router.push('/')}>Home</span>
               <span className="nav-link" onClick={() => alert('About page coming soon!')}>About</span>
+              <span className="nav-link" onClick={() => alert('Charts page coming soon!')}>Charts</span>
             </div>
           </div>
-          
+          <div className="search-wrapper-header" ref={navSearchWrapperRef}>
+            <form onSubmit={handleNavSearch} className="search-form-header">
+              <div className="search-input-wrapper-header">
+                <span className="search-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#777" viewBox="0 0 24 24">
+                    <path d="M21.707 20.293l-5.387-5.387a7.5 7.5 0 10-1.414 1.414l5.387 5.387a1 1 0 001.414-1.414zM10.5 16a5.5 5.5 0 110-11 5.5 5.5 0 010 11z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search songs..."
+                  value={navQuery}
+                  onChange={(e) => setNavQuery(e.target.value)}
+                  onFocus={() => {
+                    if (navQuery.trim().length > 2) setNavShowSuggestions(true);
+                  }}
+                />
+              </div>
+            </form>
+            {navShowSuggestions && navSuggestions.length > 0 && (
+              <div className="suggestions-dropdown">
+                {navSuggestions.slice(0, 5).map((s) => (
+                  <div
+                    key={s.id}
+                    className="suggestion-item"
+                    onClick={() => handleNavSuggestionClick(s)}
+                  >
+                    {s.cover_art && (
+                      <img
+                        src={s.cover_art}
+                        alt="Cover"
+                        className="suggestion-cover"
+                      />
+                    )}
+                    <div className="suggestion-text">
+                      <span className="suggestion-title">
+                        {s.title} – {s.artist_names}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="header-right">
-            {/* {isLoggedIn ? (
-              <button className="auth-button logout" onClick={handleLogout}>
-                Logout
-              </button>
-            ) : (
-              <button className="auth-button login" onClick={() => {
-                setAuthMode('login');
-                setShowAuthModal(true);
-              }}>
-                Login
-              </button>
-            )} */}
             <a href="https://www.instagram.com/medicine.boxx" target="_blank" rel="noopener noreferrer" className="icon-link">
               <img src="/676d86456b8d7df0ad9dfbbc_instagram-p-500.png" alt="Instagram" className="icon-img" />
             </a>
