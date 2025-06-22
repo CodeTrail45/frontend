@@ -31,6 +31,7 @@ export default function SongAnalysis() {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [dominantColors, setDominantColors] = useState(['#1a1a2e', '#16213e', '#0f0f0f']);
 
+  // Improved color extraction function using k-means clustering approach
   const extractDominantColors = (imageUrl) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -38,62 +39,173 @@ export default function SongAnalysis() {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        // Resize for better performance
-        const maxSize = 100;
-        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
-        canvas.width = img.width * ratio;
-        canvas.height = img.height * ratio;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Use smaller size for faster processing
+        const size = 50;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
         try {
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, size, size);
           const data = imageData.data;
-          const colorCounts = {};
-          // Sample every pixel
+          const pixels = [];
+          // Extract all pixel colors
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
-            const alpha = data[i + 3];
-            // Skip transparent pixels and very dark/light colors
-            if (alpha < 128 || (r + g + b) < 50 || (r + g + b) > 700) continue;
-            // Group similar colors
-            const rGroup = Math.floor(r / 25) * 25;
-            const gGroup = Math.floor(g / 25) * 25;
-            const bGroup = Math.floor(b / 25) * 25;
-            const colorKey = `${rGroup},${gGroup},${bGroup}`;
-            colorCounts[colorKey] = (colorCounts[colorKey] || 0) + 1;
+            const a = data[i + 3];
+            // Skip transparent pixels and very dark/bright pixels
+            if (a > 128 && (r + g + b) > 30 && (r + g + b) < 720) {
+              pixels.push([r, g, b]);
+            }
           }
-          // Get top 3 most frequent colors
-          const sortedColors = Object.entries(colorCounts)
-            .sort(([,a], [,b]) => b - a)
-            .slice(0, 3)
-            .map(([rgb]) => {
-              const [r, g, b] = rgb.split(',').map(Number);
-              return `rgb(${r}, ${g}, ${b})`;
+          if (pixels.length === 0) {
+            resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
+            return;
+          }
+          // Simple k-means clustering to find dominant colors
+          const numClusters = 3;
+          let centroids = [];
+          // Initialize centroids randomly
+          for (let i = 0; i < numClusters; i++) {
+            const randomPixel = pixels[Math.floor(Math.random() * pixels.length)];
+            centroids.push([...randomPixel]);
+          }
+          // Run k-means iterations
+          for (let iter = 0; iter < 10; iter++) {
+            const clusters = Array(numClusters).fill().map(() => []);
+            // Assign pixels to nearest centroid
+            pixels.forEach(pixel => {
+              let minDistance = Infinity;
+              let closestCentroid = 0;
+              centroids.forEach((centroid, index) => {
+                const distance = Math.sqrt(
+                  Math.pow(pixel[0] - centroid[0], 2) +
+                  Math.pow(pixel[1] - centroid[1], 2) +
+                  Math.pow(pixel[2] - centroid[2], 2)
+                );
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  closestCentroid = index;
+                }
+              });
+              clusters[closestCentroid].push(pixel);
             });
-          if (sortedColors.length >= 2) {
-            // Enhance colors for better visual appeal
-            const enhancedColors = sortedColors.map(color => {
-              const [r, g, b] = color.match(/\d+/g).map(Number);
-              // Darken colors for background use
-              const darkR = Math.max(20, Math.floor(r * 0.6));
-              const darkG = Math.max(20, Math.floor(g * 0.6));
-              const darkB = Math.max(20, Math.floor(b * 0.6));
-              return `rgb(${darkR}, ${darkG}, ${darkB})`;
+            // Update centroids
+            centroids = clusters.map(cluster => {
+              if (cluster.length === 0) return centroids[0]; // Fallback
+              const sum = cluster.reduce((acc, pixel) => [
+                acc[0] + pixel[0],
+                acc[1] + pixel[1],
+                acc[2] + pixel[2]
+              ], [0, 0, 0]);
+              return [
+                Math.round(sum[0] / cluster.length),
+                Math.round(sum[1] / cluster.length),
+                Math.round(sum[2] / cluster.length)
+              ];
             });
-            resolve(enhancedColors);
+          }
+          // Convert centroids to colors and enhance them
+          const dominantColors = centroids
+            .filter(centroid => centroid.every(val => val >= 0 && val <= 255))
+            .map(centroid => {
+              // Enhance saturation and adjust brightness for better backgrounds
+              let [r, g, b] = centroid;
+              // Convert to HSL for better color manipulation
+              const max = Math.max(r, g, b) / 255;
+              const min = Math.min(r, g, b) / 255;
+              const diff = max - min;
+              let h = 0;
+              if (diff !== 0) {
+                if (max === r / 255) h = ((g - b) / 255) / diff;
+                else if (max === g / 255) h = 2 + ((b - r) / 255) / diff;
+                else h = 4 + ((r - g) / 255) / diff;
+              }
+              h = Math.round(60 * h);
+              if (h < 0) h += 360;
+              const l = (max + min) / 2;
+              const s = diff === 0 ? 0 : diff / (1 - Math.abs(2 * l - 1));
+              // Enhance saturation and darken for background
+              const enhancedS = Math.min(1, s * 1.2);
+              const enhancedL = Math.max(0.15, Math.min(0.4, l * 0.7)); // Darker for backgrounds
+              // Convert back to RGB
+              const c = (1 - Math.abs(2 * enhancedL - 1)) * enhancedS;
+              const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+              const m = enhancedL - c / 2;
+              let rPrime, gPrime, bPrime;
+              if (h < 60) [rPrime, gPrime, bPrime] = [c, x, 0];
+              else if (h < 120) [rPrime, gPrime, bPrime] = [x, c, 0];
+              else if (h < 180) [rPrime, gPrime, bPrime] = [0, c, x];
+              else if (h < 240) [rPrime, gPrime, bPrime] = [0, x, c];
+              else if (h < 300) [rPrime, gPrime, bPrime] = [x, 0, c];
+              else [rPrime, gPrime, bPrime] = [c, 0, x];
+              const finalR = Math.round((rPrime + m) * 255);
+              const finalG = Math.round((gPrime + m) * 255);
+              const finalB = Math.round((bPrime + m) * 255);
+              return `rgb(${finalR}, ${finalG}, ${finalB})`;
+            });
+          console.log('Extracted dominant colors:', dominantColors);
+          if (dominantColors.length >= 2) {
+            resolve(dominantColors);
           } else {
             resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
           }
         } catch (error) {
-          console.warn('Canvas error:', error);
+          console.error('Canvas processing error:', error);
           resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
         }
       };
       img.onerror = (error) => {
-        console.warn('Image load error:', error);
+        console.error('Image load error:', error);
         resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
       };
+      // Add timestamp to prevent caching issues
+      img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+    });
+  };
+
+  // Alternative simpler method as fallback
+  const extractDominantColorsSimple = (imageUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1;
+        canvas.height = 1;
+        // Get average color first
+        ctx.drawImage(img, 0, 0, 1, 1);
+        const avgData = ctx.getImageData(0, 0, 1, 1).data;
+        const avgColor = `rgb(${Math.max(20, avgData[0] * 0.7)}, ${Math.max(20, avgData[1] * 0.7)}, ${Math.max(20, avgData[2] * 0.7)})`;
+        // Now sample more pixels
+        canvas.width = 30;
+        canvas.height = 30;
+        ctx.drawImage(img, 0, 0, 30, 30);
+        const imageData = ctx.getImageData(0, 0, 30, 30);
+        const data = imageData.data;
+        const colorFreq = {};
+        for (let i = 0; i < data.length; i += 4) {
+          const r = Math.floor(data[i] / 30) * 30;
+          const g = Math.floor(data[i + 1] / 30) * 30;
+          const b = Math.floor(data[i + 2] / 30) * 30;
+          if (r + g + b > 50 && r + g + b < 650) {
+            const key = `${r},${g},${b}`;
+            colorFreq[key] = (colorFreq[key] || 0) + 1;
+          }
+        }
+        const sortedColors = Object.entries(colorFreq)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 3)
+          .map(([rgb]) => {
+            const [r, g, b] = rgb.split(',').map(Number);
+            return `rgb(${Math.max(20, r * 0.8)}, ${Math.max(20, g * 0.8)}, ${Math.max(20, b * 0.8)})`;
+          });
+        const colors = sortedColors.length >= 2 ? sortedColors : [avgColor, avgColor, avgColor];
+        resolve(colors);
+      };
+      img.onerror = () => resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
       img.src = imageUrl;
     });
   };
@@ -107,22 +219,28 @@ export default function SongAnalysis() {
         const found = (data.results || []).find((s) => String(s.id) === String(id));
         if (found && found.cover_art) {
           setCoverArt(found.cover_art);
-          console.log('Cover art found:', found.cover_art);
+          console.log('Cover art URL:', found.cover_art);
+          // Try advanced color extraction first, fallback to simple method
           try {
-            const colors = await extractDominantColors(found.cover_art);
-            console.log('Extracted colors:', colors);
+            let colors = await extractDominantColors(found.cover_art);
+            // If advanced method fails, try simple method
+            if (colors.every(color => color.includes('#1a1a2e'))) {
+              console.log('Trying fallback color extraction...');
+              colors = await extractDominantColorsSimple(found.cover_art);
+            }
+            console.log('Final extracted colors:', colors);
             setDominantColors(colors);
           } catch (error) {
-            console.warn('Error extracting colors:', error);
+            console.warn('Color extraction failed, using fallback:', error);
             setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
           }
         } else {
-          console.log('No cover art found');
+          console.log('No cover art found in results');
           setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
         }
       })
       .catch((error) => {
-        console.warn('API error:', error);
+        console.error('Search API error:', error);
         setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
       });
     setLyricsLoading(true);
@@ -141,10 +259,11 @@ export default function SongAnalysis() {
   }, [id, title, artist]);
 
   const getRGBValues = (colorString) => {
-    const match = colorString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-    if (match) {
-      return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+    const rgbMatch = colorString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (rgbMatch) {
+      return [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
     }
+    // Handle hex colors
     if (colorString.startsWith('#')) {
       const hex = colorString.slice(1);
       return [
@@ -153,7 +272,7 @@ export default function SongAnalysis() {
         parseInt(hex.substr(4, 2), 16)
       ];
     }
-    return [26, 26, 46];
+    return [26, 26, 46]; // fallback
   };
 
   // Suggestions logic
@@ -1013,9 +1132,8 @@ export default function SongAnalysis() {
           width: 100%;
           position: relative;
           overflow: hidden;
-          transition: background 0.8s ease;
+          transition: background 1s ease-in-out;
         }
-        
         .futuristic-background::before {
           content: '';
           position: absolute;
@@ -1023,9 +1141,44 @@ export default function SongAnalysis() {
           left: 0;
           right: 0;
           bottom: 0;
-          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                      radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+          background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
           pointer-events: none;
+          animation: shimmer 4s ease-in-out infinite;
+        }
+        .lyrics-content-modern {
+          background: linear-gradient(135deg, 
+            rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.25), 
+            rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.3)
+          );
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          padding: 25px;
+          font-size: 0.95rem;
+          line-height: 1.8;
+          overflow-y: auto;
+          max-height: 500px;
+          backdrop-filter: blur(15px);
+          transition: all 1s ease-in-out;
+          box-shadow: 0 8px 32px rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.3);
+        }
+        .analysis-section {
+          background: linear-gradient(135deg, 
+            rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.2), 
+            rgba(${getRGBValues(dominantColors[2] || dominantColors[0]).join(', ')}, 0.25)
+          );
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 12px;
+          padding: 25px;
+          backdrop-filter: blur(15px);
+          transition: all 1s ease-in-out;
+          box-shadow: 0 8px 32px rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.2);
+        }
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
         }
         
         .header {
