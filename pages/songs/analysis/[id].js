@@ -506,131 +506,152 @@ export default function SongAnalysis() {
           <title>Loading... | Scalpel</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         </Head>
-        <div className="loading-page">
-          <div className="loading-container">
-            <div className="loading-logo">
-              <img src="/logo2.png" alt="Scalpel" className="loading-logo-img" />
+        <div className="loading-page-attractive">
+          <div className="animated-bg">
+            <div className="blob blob1"></div>
+            <div className="blob blob2"></div>
+            <div className="blob blob3"></div>
+          </div>
+          <div className="loading-center-content">
+            <div className="vinyl-spin">
+              <img src="/logo2.png" alt="Scalpel Logo" className="vinyl-img" />
+              <div className="vinyl-hole"></div>
             </div>
-            <div className="loading-content">
-              <div className="loading-title">Analyzing Your Song</div>
-              <div className="loading-subtitle">Extracting lyrics and insights...</div>
-              <div className="loading-progress">
-                <div className="progress-bar">
-                  <div className="progress-fill"></div>
-                </div>
-              </div>
-              <div className="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+            <div className="music-bars">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className={`bar bar${i+1}`}></div>
+              ))}
             </div>
+            <div className="pulse-circle"></div>
           </div>
         </div>
         <style jsx>{`
-          .loading-page {
+          .loading-page-attractive {
             min-height: 100vh;
-            background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
+            width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Inter', 'Poppins', sans-serif;
-            overflow: hidden;
             position: relative;
+            background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
+            overflow: hidden;
             transition: background 0.8s ease;
           }
-          .loading-page::before {
-            content: '';
+          .animated-bg {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            animation: pulse 3s ease-in-out infinite;
+            width: 100vw;
+            height: 100vh;
+            top: 0; left: 0;
+            z-index: 1;
           }
-          .loading-container {
-            text-align: center;
-            z-index: 2;
-          }
-          .loading-logo {
-            margin-bottom: 30px;
-            animation: float 3s ease-in-out infinite;
-          }
-          .loading-logo-img {
-            height: 60px;
-            width: auto;
-            filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3));
-          }
-          .loading-content {
-            max-width: 400px;
-          }
-          .loading-title {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 10px;
-            animation: shimmer 2s ease-in-out infinite;
-          }
-          .loading-subtitle {
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 30px;
-          }
-          .loading-progress {
-            margin-bottom: 30px;
-          }
-          .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            overflow: hidden;
-          }
-          .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.8));
-            border-radius: 2px;
-            animation: progress 2s ease-in-out infinite;
-          }
-          .loading-dots {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-          }
-          .loading-dots span {
-            width: 8px;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.8);
+          .blob {
+            position: absolute;
             border-radius: 50%;
-            animation: bounce 1.4s ease-in-out infinite;
+            opacity: 0.25;
+            filter: blur(40px);
+            animation: blobMove 12s infinite alternate ease-in-out;
           }
-          .loading-dots span:nth-child(2) {
-            animation-delay: 0.2s;
+          .blob1 {
+            width: 400px; height: 400px;
+            background: ${dominantColors[0]};
+            top: 10%; left: 10%;
+            animation-delay: 0s;
           }
-          .loading-dots span:nth-child(3) {
-            animation-delay: 0.4s;
+          .blob2 {
+            width: 350px; height: 350px;
+            background: ${dominantColors[1]};
+            top: 60%; left: 60%;
+            animation-delay: 2s;
           }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+          .blob3 {
+            width: 300px; height: 300px;
+            background: ${dominantColors[2] || dominantColors[0]};
+            top: 40%; left: 70%;
+            animation-delay: 4s;
           }
-          @keyframes shimmer {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+          @keyframes blobMove {
+            0% { transform: scale(1) translateY(0px); }
+            100% { transform: scale(1.2) translateY(-40px); }
           }
-          @keyframes progress {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
+          .loading-center-content {
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
           }
-          @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-            40% { transform: scale(1.2); opacity: 1; }
+          .vinyl-spin {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.07);
+            box-shadow: 0 0 40px 10px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: spin 2.5s linear infinite;
           }
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
+          .vinyl-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            z-index: 2;
+            box-shadow: 0 0 20px 0 rgba(0,0,0,0.15);
+          }
+          .vinyl-hole {
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            width: 18px; height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px 2px rgba(0,0,0,0.12);
+            z-index: 3;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .music-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            height: 36px;
+          }
+          .bar {
+            width: 7px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #fff, ${dominantColors[1]}, ${dominantColors[2]});
+            animation: barAnim 1.2s infinite alternate;
+          }
+          .bar1 { height: 18px; animation-delay: 0s; }
+          .bar2 { height: 28px; animation-delay: 0.1s; }
+          .bar3 { height: 22px; animation-delay: 0.2s; }
+          .bar4 { height: 36px; animation-delay: 0.3s; }
+          .bar5 { height: 22px; animation-delay: 0.4s; }
+          .bar6 { height: 28px; animation-delay: 0.5s; }
+          .bar7 { height: 18px; animation-delay: 0.6s; }
+          @keyframes barAnim {
+            0% { transform: scaleY(0.7); opacity: 0.7; }
+            100% { transform: scaleY(1.2); opacity: 1; }
+          }
+          .pulse-circle {
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+            animation: pulseCircle 2.5s infinite;
+            z-index: 1;
+          }
+          @keyframes pulseCircle {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
           }
         `}</style>
       </>
@@ -1386,35 +1407,41 @@ export default function SongAnalysis() {
           margin-bottom: 30px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           padding-bottom: 15px;
+          background: linear-gradient(90deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2]});
+          border-radius: 18px 18px 0 0;
+          box-shadow: 0 4px 24px 0 rgba(0,0,0,0.08);
+          position: relative;
+          overflow: hidden;
         }
-        
         .tab {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 18px;
-          font-size: 0.95rem;
-          color: rgba(255, 255, 255, 0.7);
+          padding: 12px 28px;
+          font-size: 1.05rem;
+          color: #fff;
           cursor: pointer;
-          border-radius: 25px;
+          border-radius: 25px 25px 0 0;
           transition: all 0.3s cubic-bezier(.4,2,.6,1);
-          font-weight: 500;
+          font-weight: 600;
           position: relative;
           overflow: hidden;
-          border: 1px solid transparent;
-          background: linear-gradient(90deg, rgba(138,43,226,0.08), rgba(255,20,147,0.08));
+          border: 1.5px solid transparent;
+          background: linear-gradient(120deg, rgba(255,255,255,0.08), rgba(0,0,0,0.04));
+          box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
         }
         .tab:hover {
           color: #fff;
-          background: linear-gradient(90deg, rgba(138,43,226,0.18), rgba(255,20,147,0.18));
-          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.15);
+          background: linear-gradient(120deg, ${dominantColors[1]}, ${dominantColors[2]});
+          box-shadow: 0 4px 18px 0 ${dominantColors[2]};
+          border: 1.5px solid ${dominantColors[1]};
         }
         .tab.active {
-          background: linear-gradient(135deg, rgba(138, 43, 226, 0.35), rgba(255, 20, 147, 0.35), rgba(138, 43, 226, 0.18));
+          background: linear-gradient(120deg, ${dominantColors[2]}, ${dominantColors[1]}, ${dominantColors[0]});
           color: #fff;
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          box-shadow: 0 4px 15px rgba(138, 43, 226, 0.25), 0 0 20px rgba(255, 20, 147, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-          transform: translateY(-1px) scale(1.04);
+          border: 1.5px solid ${dominantColors[2]};
+          box-shadow: 0 6px 24px 0 ${dominantColors[2]}, 0 0 20px ${dominantColors[1]}, inset 0 1px 0 rgba(255,255,255,0.08);
+          transform: translateY(-2px) scale(1.07);
         }
         .tab.active::after {
           content: '';
@@ -1422,10 +1449,10 @@ export default function SongAnalysis() {
           bottom: -2px;
           left: 50%;
           transform: translateX(-50%);
-          width: 60%;
-          height: 2.5px;
-          background: linear-gradient(90deg, #8A2BE2, #FF1493, #8A2BE2);
-          border-radius: 1px;
+          width: 70%;
+          height: 3px;
+          background: linear-gradient(90deg, ${dominantColors[2]}, ${dominantColors[1]}, ${dominantColors[0]});
+          border-radius: 2px;
           animation: shimmer 2s ease-in-out infinite;
         }
         @keyframes shimmer {
@@ -1439,70 +1466,44 @@ export default function SongAnalysis() {
         
         /* Lyrics Section */
         .lyrics-section-modern {
-          background: linear-gradient(120deg, rgba(138,43,226,0.18) 0%, rgba(255,20,147,0.13) 100%);
-          backdrop-filter: blur(10px);
-          border-radius: 16px;
-          padding: 30px;
+          background: linear-gradient(120deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2]});
+          backdrop-filter: blur(12px);
+          border-radius: 20px;
+          padding: 36px 32px;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: 0 10px 40px 0 ${dominantColors[2]};
+          border: 1.5px solid ${dominantColors[1]};
           z-index: 1;
+          animation: lyricsBgMove 8s ease-in-out infinite alternate;
         }
         .lyrics-section-modern::before {
           content: '';
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
           z-index: 0;
-          background: 
-            radial-gradient(circle at 20% 30%, rgba(255, 20, 147, 0.18) 0, transparent 60%),
-            radial-gradient(circle at 80% 70%, rgba(138, 43, 226, 0.15) 0, transparent 60%),
-            linear-gradient(120deg, rgba(255,255,255,0.04) 0%, rgba(138,43,226,0.07) 100%);
+          background: radial-gradient(circle at 20% 30%, ${dominantColors[2]}33 0, transparent 60%),
+                      radial-gradient(circle at 80% 70%, ${dominantColors[1]}22 0, transparent 60%),
+                      linear-gradient(120deg, rgba(255,255,255,0.04) 0%, ${dominantColors[0]}22 100%);
           pointer-events: none;
-          animation: lyrics-bg-move 10s ease-in-out infinite alternate;
+          animation: lyricsBgMove 10s ease-in-out infinite alternate;
         }
-        @keyframes lyrics-bg-move {
-          0% {
-            background-position: 20% 30%, 80% 70%, 0% 0%;
-          }
-          100% {
-            background-position: 30% 40%, 70% 60%, 100% 100%;
-          }
+        @keyframes lyricsBgMove {
+          0% { filter: blur(0px); }
+          100% { filter: blur(2.5px) brightness(1.08); }
         }
-        .lyrics-section-modern:hover::before {
-          filter: brightness(1.08) blur(1.5px) drop-shadow(0 0 16px #ff1493aa);
-          transition: filter 0.4s cubic-bezier(.4,2,.6,1);
-        }
-        
-        .lyrics-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .lyrics-header h3 {
-          font-size: 1.4rem;
-          color: #fff;
-          font-weight: 600;
-        }
-        
         .lyrics-content-modern {
-          background: linear-gradient(135deg, 
-            rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.2), 
-            rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.25)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 12px;
-          padding: 25px;
-          font-size: 0.95rem;
-          line-height: 1.8;
+          background: linear-gradient(135deg, rgba(255,255,255,0.08), ${dominantColors[1]}22);
+          border: 1.5px solid ${dominantColors[2]};
+          border-radius: 14px;
+          padding: 28px;
+          font-size: 1.05rem;
+          line-height: 1.85;
           overflow-y: auto;
           max-height: 500px;
           backdrop-filter: blur(10px);
-          transition: all 0.8s ease;
+          transition: all 0.8s cubic-bezier(.4,2,.6,1);
+          box-shadow: 0 2px 12px 0 ${dominantColors[1]}44;
         }
         
         .loading-text {
