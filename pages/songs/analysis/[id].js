@@ -445,12 +445,10 @@ export default function SongAnalysis() {
   }
 
   const handleUpvoteComment = async (commentId) => {
-    // Check if user has already upvoted this comment
     if (userUpvotes[commentId]) {
       alert('You have already upvoted this comment');
       return;
     }
-  
     try {
       const response = await fetch(`${API_ENDPOINTS.COMMENTS}/${commentId}/upvote`, {
         method: 'POST',
@@ -458,91 +456,77 @@ export default function SongAnalysis() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-  
-      // Handle different response statuses
       if (response.status === 401) {
         alert('Please log in to upvote comments');
         return;
       }
-
       if (!response.ok) {
         console.warn(`Upvote returned status ${response.status}`);
         return;
       }
-
-      try {
-        const data = await response.json();
-        
-        // Update the local upvote count
-        setCommentUpvotes(prev => ({
-          ...prev,
-          [commentId]: (prev[commentId] || 0) + 1
-        }));
-        
-        // Save to userUpvotes state and localStorage to prevent multiple upvotes
-        const updatedUpvotes = { ...userUpvotes, [commentId]: true };
-        setUserUpvotes(updatedUpvotes);
-        localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
-        
-        // Check if the comment has reached 10 upvotes
-        if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
-          setIsReanalyzing(true);
-          try {
-            // Get the current analysis data
-            const analysisResponse = await fetch(
+      // Update the local upvote count and userUpvotes immediately
+      setCommentUpvotes(prev => ({
+        ...prev,
+        [commentId]: (prev[commentId] || 0) + 1
+      }));
+      const updatedUpvotes = { ...userUpvotes, [commentId]: true };
+      setUserUpvotes(updatedUpvotes);
+      localStorage.setItem('userUpvotes', JSON.stringify(updatedUpvotes));
+      // Also update the comment in the comments list (if present)
+      setComments(prevComments => prevComments.map(comment =>
+        comment.id === commentId
+          ? { ...comment, upvote_count: (comment.upvote_count || 0) + 1 }
+          : comment
+      ));
+      // Check if the comment has reached 10 upvotes
+      if ((commentUpvotes[commentId] || 0) + 1 >= 10) {
+        setIsReanalyzing(true);
+        try {
+          const analysisResponse = await fetch(
+            `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
+          );
+          if (!analysisResponse.ok) {
+            console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
+            setIsReanalyzing(false);
+            return;
+          }
+          const analysisData = await analysisResponse.json();
+          const reanalyzeResponse = await fetch(API_ENDPOINTS.RE_ANALYZE, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              oldAnalysis: {
+                overallHeadline: analysisData.analysis.overallHeadline,
+                songTitle: analysisData.analysis.songTitle,
+                artist: analysisData.analysis.artist,
+                introduction: analysisData.analysis.introduction,
+                sectionAnalyses: analysisData.analysis.sectionAnalyses,
+                conclusion: analysisData.analysis.conclusion
+              },
+              newComment: comments.find(c => c.id === commentId)?.content || '',
+              artist: artist,
+              track: title
+            })
+          });
+          if (!reanalyzeResponse.ok) {
+            console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
+          } else {
+            const newAnalysisResponse = await fetch(
               `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
             );
-            
-            if (!analysisResponse.ok) {
-              console.warn(`Analysis fetch returned status ${analysisResponse.status}`);
-              setIsReanalyzing(false);
-              return;
+            if (newAnalysisResponse.ok) {
+              const newAnalysisData = await newAnalysisResponse.json();
+              setAnalysis(newAnalysisData.analysis || null);
             }
-
-            const analysisData = await analysisResponse.json();
-            
-            // Trigger re-analyze API
-            const reanalyzeResponse = await fetch(API_ENDPOINTS.RE_ANALYZE, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: JSON.stringify({
-                oldAnalysis: {
-                  overallHeadline: analysisData.analysis.overallHeadline,
-                  songTitle: analysisData.analysis.songTitle,
-                  artist: analysisData.analysis.artist,
-                  introduction: analysisData.analysis.introduction,
-                  sectionAnalyses: analysisData.analysis.sectionAnalyses,
-                  conclusion: analysisData.analysis.conclusion
-                },
-                newComment: comments.find(c => c.id === commentId)?.content || '',
-                artist: artist,
-                track: title
-              })
-            });
-
-            if (!reanalyzeResponse.ok) {
-              console.warn(`Re-analyze returned status ${reanalyzeResponse.status}`);
-            } else {
-              // Refresh the analysis data after successful reanalyze
-              const newAnalysisResponse = await fetch(
-                `${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`
-              );
-              if (newAnalysisResponse.ok) {
-                const newAnalysisData = await newAnalysisResponse.json();
-                setAnalysis(newAnalysisData.analysis || null);
-              }
-            }
-          } catch (err) {
-            console.warn('Error in re-analyze process:', err);
-          } finally {
-            setIsReanalyzing(false);
           }
+        } catch (err) {
+          console.warn('Error in re-analyze process:', err);
+        } finally {
+          setIsReanalyzing(false);
         }
-      } catch (err) {
-        console.warn('Error parsing upvote response:', err);
       }
     } catch (err) {
       console.warn('Error upvoting comment:', err);
@@ -1027,6 +1011,37 @@ export default function SongAnalysis() {
 
               {activeSection === 'comments' && (
                 <div className="comments-section">
+                  {/* Analysis Section */}
+                  {analysis && (
+                    <div className="lyrics-section-modern" style={{ marginBottom: 32 }}>
+                      <div className="lyrics-header">
+                        <h3>Analysis</h3>
+                      </div>
+                      <div className="lyrics-content-modern">
+                        {analysis.overallHeadline && (
+                          <div style={{ fontWeight: 700, fontSize: '1.1em', marginBottom: 12 }}>{analysis.overallHeadline}</div>
+                        )}
+                        {analysis.introduction && (
+                          <div style={{ marginBottom: 16 }}>{analysis.introduction}</div>
+                        )}
+                        {Array.isArray(analysis.sectionAnalyses) && analysis.sectionAnalyses.length > 0 && (
+                          <div style={{ marginBottom: 16 }}>
+                            {analysis.sectionAnalyses.map((section, idx) => (
+                              <div key={idx} style={{ marginBottom: 18 }}>
+                                {section.sectionName && <div style={{ fontWeight: 600, marginBottom: 4 }}>{section.sectionName}</div>}
+                                {section.verseSummary && <div style={{ fontStyle: 'italic', marginBottom: 2 }}>{section.verseSummary}</div>}
+                                {section.analysis && <div>{section.analysis}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {analysis.conclusion && (
+                          <div style={{ marginTop: 12, fontWeight: 500 }}>{analysis.conclusion}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Comment Form and List */}
                   <div className="comment-form-container">
                     <form onSubmit={handleAddComment} className="comment-form">
                       <div className="user-avatar">
@@ -1745,17 +1760,19 @@ export default function SongAnalysis() {
           transform: translateY(-50%);
           padding: 6px 14px;
           border-radius: 20px;
-          background: linear-gradient(90deg, #8A2BE2, #FF1493);
+          background: linear-gradient(90deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
           color: white;
           font-size: 0.85rem;
           font-weight: 500;
           border: none;
           cursor: pointer;
           transition: all 0.2s ease;
+          box-shadow: 0 2px 8px 0 ${dominantColors[1]}55;
         }
-        
         .comment-submit:hover {
           transform: translateY(-50%) scale(1.05);
+          background: linear-gradient(90deg, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]}, ${dominantColors[0]});
+          box-shadow: 0 4px 16px 0 ${dominantColors[2] || dominantColors[0]}55;
         }
         
         .comments-list {
