@@ -506,154 +506,135 @@ export default function SongAnalysis() {
           <title>Loading... | Scalpel</title>
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         </Head>
-        <div className="loading-page-attractive">
-          <div className="animated-bg">
-            <div className="blob blob1"></div>
-            <div className="blob blob2"></div>
-            <div className="blob blob3"></div>
-          </div>
-          <div className="loading-center-content">
-            <div className="vinyl-spin">
-              <img src="/logo2.png" alt="Scalpel Logo" className="vinyl-img" />
-              <div className="vinyl-hole"></div>
+        <div className="loading-page">
+          <div className="loading-visuals">
+            <div className="loading-logo-animated">
+              <img src="/logo2.png" alt="Scalpel" className="loading-logo-img" />
+              <div className="logo-glow"></div>
             </div>
-            <div className="music-bars">
-              {[...Array(7)].map((_, i) => (
-                <div key={i} className={`bar bar${i+1}`}></div>
-              ))}
+            <div className="music-notes">
+              <span className="note note1">&#119070;</span>
+              <span className="note note2">&#119074;</span>
+              <span className="note note3">&#119082;</span>
+              <span className="note note4">&#9835;</span>
             </div>
-            <div className="pulse-circle"></div>
+            <div className="loading-spinner">
+              <svg viewBox="0 0 50 50">
+                <circle className="ring" cx="25" cy="25" r="22" fill="none" strokeWidth="4" />
+                <circle className="ball" cx="25" cy="25" r="22" fill="none" strokeWidth="4" />
+              </svg>
+            </div>
           </div>
         </div>
         <style jsx>{`
-          .loading-page-attractive {
+          .loading-page {
             min-height: 100vh;
             width: 100vw;
+            background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
+            font-family: 'Inter', 'Poppins', sans-serif;
             overflow: hidden;
+            position: relative;
             transition: background 0.8s ease;
           }
-          .animated-bg {
-            position: absolute;
-            width: 100vw;
-            height: 100vh;
-            top: 0; left: 0;
-            z-index: 1;
-          }
-          .blob {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.25;
-            filter: blur(40px);
-            animation: blobMove 12s infinite alternate ease-in-out;
-          }
-          .blob1 {
-            width: 400px; height: 400px;
-            background: ${dominantColors[0]};
-            top: 10%; left: 10%;
-            animation-delay: 0s;
-          }
-          .blob2 {
-            width: 350px; height: 350px;
-            background: ${dominantColors[1]};
-            top: 60%; left: 60%;
-            animation-delay: 2s;
-          }
-          .blob3 {
-            width: 300px; height: 300px;
-            background: ${dominantColors[2] || dominantColors[0]};
-            top: 40%; left: 70%;
-            animation-delay: 4s;
-          }
-          @keyframes blobMove {
-            0% { transform: scale(1) translateY(0px); }
-            100% { transform: scale(1.2) translateY(-40px); }
-          }
-          .loading-center-content {
-            z-index: 2;
+          .loading-visuals {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
           }
-          .vinyl-spin {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.07);
-            box-shadow: 0 0 40px 10px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+          .loading-logo-animated {
             position: relative;
-            animation: spin 2.5s linear infinite;
-          }
-          .vinyl-img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
             z-index: 2;
-            box-shadow: 0 0 20px 0 rgba(0,0,0,0.15);
+            margin-bottom: 40px;
           }
-          .vinyl-hole {
+          .loading-logo-img {
+            height: 80px;
+            width: auto;
+            filter: drop-shadow(0 4px 40px ${dominantColors[1]});
+            animation: floatLogo 3s ease-in-out infinite;
+          }
+          .logo-glow {
             position: absolute;
-            left: 50%; top: 50%;
+            top: 50%;
+            left: 50%;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, ${dominantColors[1]} 0%, transparent 70%);
+            filter: blur(30px);
             transform: translate(-50%, -50%);
-            width: 18px; height: 18px;
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: 0 0 8px 2px rgba(0,0,0,0.12);
+            z-index: 1;
+            opacity: 0.7;
+            animation: pulseGlow 2.5s infinite alternate;
+          }
+          @keyframes floatLogo {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-18px); }
+          }
+          @keyframes pulseGlow {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+          }
+          .music-notes {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 3;
           }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          .music-bars {
-            display: flex;
-            align-items: flex-end;
-            gap: 4px;
-            margin-top: 32px;
-            margin-bottom: 16px;
-            height: 36px;
-          }
-          .bar {
-            width: 7px;
-            border-radius: 4px;
-            background: linear-gradient(180deg, #fff, ${dominantColors[1]}, ${dominantColors[2]});
-            animation: barAnim 1.2s infinite alternate;
-          }
-          .bar1 { height: 18px; animation-delay: 0s; }
-          .bar2 { height: 28px; animation-delay: 0.1s; }
-          .bar3 { height: 22px; animation-delay: 0.2s; }
-          .bar4 { height: 36px; animation-delay: 0.3s; }
-          .bar5 { height: 22px; animation-delay: 0.4s; }
-          .bar6 { height: 28px; animation-delay: 0.5s; }
-          .bar7 { height: 18px; animation-delay: 0.6s; }
-          @keyframes barAnim {
-            0% { transform: scaleY(0.7); opacity: 0.7; }
-            100% { transform: scaleY(1.2); opacity: 1; }
-          }
-          .pulse-circle {
+          .note {
             position: absolute;
-            left: 50%; top: 50%;
-            transform: translate(-50%, -50%);
-            width: 180px; height: 180px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
-            animation: pulseCircle 2.5s infinite;
-            z-index: 1;
+            font-size: 2.2rem;
+            color: #fff;
+            opacity: 0.7;
+            animation: floatNotes 3s infinite linear;
           }
-          @keyframes pulseCircle {
-            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+          .note1 { left: -60px; animation-delay: 0s; color: ${dominantColors[0]}; }
+          .note2 { left: 0px; animation-delay: 0.7s; color: ${dominantColors[1]}; }
+          .note3 { left: 60px; animation-delay: 1.4s; color: ${dominantColors[2]}; }
+          .note4 { left: 30px; animation-delay: 1.1s; color: #fff; }
+          @keyframes floatNotes {
+            0% { opacity: 0.7; transform: translateY(0) scale(1); }
+            50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+            100% { opacity: 0.7; transform: translateY(0) scale(1); }
+          }
+          .loading-spinner {
+            margin-top: 60px;
+            z-index: 2;
+          }
+          .loading-spinner svg {
+            width: 70px;
+            height: 70px;
+          }
+          .ring {
+            stroke: rgba(255,255,255,0.15);
+            stroke-width: 4;
+          }
+          .ball {
+            stroke: url(#gradient);
+            stroke-dasharray: 140;
+            stroke-dashoffset: 70;
+            stroke-linecap: round;
+            animation: spinBall 1.2s linear infinite;
+            stroke-width: 4;
+          }
+          @keyframes spinBall {
+            0% { stroke-dashoffset: 140; }
+            100% { stroke-dashoffset: 0; }
           }
         `}</style>
+        <svg width="0" height="0">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={dominantColors[0]} />
+              <stop offset="50%" stopColor={dominantColors[1]} />
+              <stop offset="100%" stopColor={dominantColors[2] || dominantColors[0]} />
+            </linearGradient>
+          </defs>
+        </svg>
       </>
     );
   }
@@ -1407,41 +1388,38 @@ export default function SongAnalysis() {
           margin-bottom: 30px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           padding-bottom: 15px;
-          background: linear-gradient(90deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2]});
-          border-radius: 18px 18px 0 0;
-          box-shadow: 0 4px 24px 0 rgba(0,0,0,0.08);
-          position: relative;
-          overflow: hidden;
         }
+        
         .tab {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 28px;
+          padding: 12px 22px;
           font-size: 1.05rem;
           color: #fff;
           cursor: pointer;
-          border-radius: 25px 25px 0 0;
-          transition: all 0.3s cubic-bezier(.4,2,.6,1);
+          border-radius: 25px;
           font-weight: 600;
+          border: 1.5px solid transparent;
+          background: linear-gradient(90deg, rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.18), rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.18));
+          box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+          transition: all 0.3s cubic-bezier(.4,2,.6,1);
           position: relative;
           overflow: hidden;
-          border: 1.5px solid transparent;
-          background: linear-gradient(120deg, rgba(255,255,255,0.08), rgba(0,0,0,0.04));
-          box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+          z-index: 1;
         }
-        .tab:hover {
+        .tab:hover, .tab:focus {
+          background: linear-gradient(90deg, rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.28), rgba(${getRGBValues(dominantColors[2] || dominantColors[0]).join(', ')}, 0.28));
           color: #fff;
-          background: linear-gradient(120deg, ${dominantColors[1]}, ${dominantColors[2]});
-          box-shadow: 0 4px 18px 0 ${dominantColors[2]};
-          border: 1.5px solid ${dominantColors[1]};
+          border: 1.5px solid rgba(255,255,255,0.18);
+          box-shadow: 0 4px 18px 0 rgba(0,0,0,0.13);
         }
         .tab.active {
-          background: linear-gradient(120deg, ${dominantColors[2]}, ${dominantColors[1]}, ${dominantColors[0]});
+          background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
           color: #fff;
-          border: 1.5px solid ${dominantColors[2]};
-          box-shadow: 0 6px 24px 0 ${dominantColors[2]}, 0 0 20px ${dominantColors[1]}, inset 0 1px 0 rgba(255,255,255,0.08);
-          transform: translateY(-2px) scale(1.07);
+          border: 1.5px solid #fff5;
+          box-shadow: 0 4px 18px 0 ${dominantColors[1]}55, 0 0 20px ${dominantColors[2] || dominantColors[0]}33, inset 0 1px 0 #fff2;
+          transform: translateY(-1px) scale(1.06);
         }
         .tab.active::after {
           content: '';
@@ -1449,9 +1427,9 @@ export default function SongAnalysis() {
           bottom: -2px;
           left: 50%;
           transform: translateX(-50%);
-          width: 70%;
+          width: 60%;
           height: 3px;
-          background: linear-gradient(90deg, ${dominantColors[2]}, ${dominantColors[1]}, ${dominantColors[0]});
+          background: linear-gradient(90deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
           border-radius: 2px;
           animation: shimmer 2s ease-in-out infinite;
         }
@@ -1466,44 +1444,75 @@ export default function SongAnalysis() {
         
         /* Lyrics Section */
         .lyrics-section-modern {
-          background: linear-gradient(120deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2]});
-          backdrop-filter: blur(12px);
-          border-radius: 20px;
-          padding: 36px 32px;
+          background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
+          border-radius: 18px;
+          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+          border: 1.5px solid rgba(255,255,255,0.12);
+          padding: 32px 24px;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 10px 40px 0 ${dominantColors[2]};
-          border: 1.5px solid ${dominantColors[1]};
           z-index: 1;
-          animation: lyricsBgMove 8s ease-in-out infinite alternate;
+          backdrop-filter: blur(18px);
+          transition: background 0.8s;
         }
         .lyrics-section-modern::before {
           content: '';
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
           z-index: 0;
-          background: radial-gradient(circle at 20% 30%, ${dominantColors[2]}33 0, transparent 60%),
-                      radial-gradient(circle at 80% 70%, ${dominantColors[1]}22 0, transparent 60%),
-                      linear-gradient(120deg, rgba(255,255,255,0.04) 0%, ${dominantColors[0]}22 100%);
+          background: radial-gradient(circle at 20% 30%, ${dominantColors[1]}33 0, transparent 60%),
+            radial-gradient(circle at 80% 70%, ${dominantColors[2] || dominantColors[0]}22 0, transparent 60%);
           pointer-events: none;
-          animation: lyricsBgMove 10s ease-in-out infinite alternate;
+          animation: lyrics-bg-move 10s ease-in-out infinite alternate;
         }
-        @keyframes lyricsBgMove {
-          0% { filter: blur(0px); }
-          100% { filter: blur(2.5px) brightness(1.08); }
+        @keyframes lyrics-bg-move {
+          0% {
+            background-position: 20% 30%, 80% 70%, 0% 0%;
+          }
+          100% {
+            background-position: 30% 40%, 70% 60%, 100% 100%;
+          }
         }
+        .lyrics-section-modern:hover::before {
+          filter: brightness(1.08) blur(1.5px) drop-shadow(0 0 16px #ff1493aa);
+          transition: filter 0.4s cubic-bezier(.4,2,.6,1);
+        }
+        
+        .lyrics-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .lyrics-header h3 {
+          font-size: 1.4rem;
+          color: #fff;
+          font-weight: 600;
+        }
+        
         .lyrics-content-modern {
-          background: linear-gradient(135deg, rgba(255,255,255,0.08), ${dominantColors[1]}22);
-          border: 1.5px solid ${dominantColors[2]};
+          background: linear-gradient(135deg, rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.25), rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.32));
+          border: 1.5px solid rgba(255,255,255,0.13);
           border-radius: 14px;
-          padding: 28px;
+          padding: 28px 18px;
           font-size: 1.05rem;
           line-height: 1.85;
           overflow-y: auto;
           max-height: 500px;
-          backdrop-filter: blur(10px);
-          transition: all 0.8s cubic-bezier(.4,2,.6,1);
-          box-shadow: 0 2px 12px 0 ${dominantColors[1]}44;
+          backdrop-filter: blur(12px);
+          transition: background 0.8s;
+          color: #fff;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 1px 0 #fff2;
+        }
+        
+        .lyrics-content-modern pre {
+          color: #fff;
+          background: none;
+          font-size: 1.08rem;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.25), 0 1px 0 #fff2;
         }
         
         .loading-text {
@@ -1630,15 +1639,20 @@ export default function SongAnalysis() {
         }
         
         .avatar-circle {
-          width: 100%;
-          height: 100%;
+          width: 40px;
+          height: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          background: linear-gradient(45deg, #8A2BE2, #FF1493);
-          font-weight: 600;
-          font-size: 1.1rem;
+          background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
+          color: #fff;
+          font-weight: 700;
+          font-size: 1.2rem;
+          box-shadow: 0 2px 8px 0 ${dominantColors[1]}55;
+          border: 2px solid #fff3;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.18), 0 1px 0 #fff2;
+          transition: background 0.8s;
         }
         
         .comment-content {
