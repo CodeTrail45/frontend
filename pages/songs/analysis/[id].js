@@ -995,11 +995,29 @@ export default function SongAnalysis() {
               {activeSection === 'lyrics' && (
                 <div className="lyrics-section-modern">
                   <div className="lyrics-header">
-                    <h3>Analysis</h3>
+                    <h3>Lyrics</h3>
                   </div>
                   <div className="lyrics-content-modern">
-                    {analysis && (
-                      <>
+                    {lyricsLoading ? (
+                      <div className="loading-text">Analyzing...</div>
+                    ) : isReanalyzing ? (
+                      <div className="loading-text">Reanalyzing...</div>
+                    ) : (
+                      <pre>{lyrics}</pre>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeSection === 'comments' && (
+                <div className="comments-section">
+                  {/* Analysis Section */}
+                  {analysis && (
+                    <div className="lyrics-section-modern" style={{ marginBottom: 32 }}>
+                      <div className="lyrics-header">
+                        <h3>Analysis</h3>
+                      </div>
+                      <div className="lyrics-content-modern">
                         {analysis.overallHeadline && (
                           <div style={{ fontWeight: 700, fontSize: '1.1em', marginBottom: 12 }}>{analysis.overallHeadline}</div>
                         )}
@@ -1020,14 +1038,36 @@ export default function SongAnalysis() {
                         {analysis.conclusion && (
                           <div style={{ marginTop: 12, fontWeight: 500 }}>{analysis.conclusion}</div>
                         )}
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Comment Form and List */}
+                  <div className="comment-form-container">
+                    <form onSubmit={handleAddComment} className="comment-form">
+                      <div className="user-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </div>
+                      <div className="comment-input-container">
+                        <input
+                          type="text"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Add a comment..."
+                          className="comment-input"
+                        />
+                        <button type="submit" className="comment-submit">Post</button>
+                      </div>
+                    </form>
                   </div>
-                  {/* Comments under lyrics (now analysis) section */}
-                  <div className="comments-list" style={{marginTop: 32}}>
+                  <div className="comments-list">
                     {comments.map((comment) => {
+                      // Get stored user ID to check if comment belongs to current user
                       const currentUserId = localStorage.getItem('userId');
                       const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
+                      
                       return (
                         <div key={comment.id} className="comment-block">
                           <div className="comment-avatar">
@@ -1076,46 +1116,6 @@ export default function SongAnalysis() {
                         </div>
                       )
                     })}
-                  </div>
-                </div>
-              )}
-              {activeSection === 'comments' && (
-                <div className="comments-section">
-                  {/* Lyrics Section (now in analysis tab) */}
-                  <div className="lyrics-section-modern" style={{ marginBottom: 32 }}>
-                    <div className="lyrics-header">
-                      <h3>Lyrics</h3>
-                    </div>
-                    <div className="lyrics-content-modern">
-                      {lyricsLoading ? (
-                        <div className="loading-text">Analyzing...</div>
-                      ) : isReanalyzing ? (
-                        <div className="loading-text">Reanalyzing...</div>
-                      ) : (
-                        <pre>{lyrics}</pre>
-                      )}
-                    </div>
-                  </div>
-                  {/* Comment Form */}
-                  <div className="comment-form-container">
-                    <form onSubmit={handleAddComment} className="comment-form">
-                      <div className="user-avatar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      </div>
-                      <div className="comment-input-container">
-                        <input
-                          type="text"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Add a comment..."
-                          className="comment-input"
-                        />
-                        <button type="submit" className="comment-submit">Post</button>
-                      </div>
-                    </form>
                   </div>
                 </div>
               )}
