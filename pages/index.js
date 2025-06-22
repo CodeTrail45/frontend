@@ -514,7 +514,7 @@ export default function Home() {
             onClick={() => router.push('/')}
           />
 
-          <div className="search-wrapper" ref={searchWrapperRef}>
+          {/* <div className="search-wrapper" ref={searchWrapperRef}>
             <form onSubmit={handleSearch} className="search-form">
               <div className="search-input-wrapper">
                 <span className="search-icon">
@@ -564,7 +564,7 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Three categories */}
           <div className="browse-sections">
