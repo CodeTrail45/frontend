@@ -22,7 +22,7 @@ export default function Home() {
 
   // 1) Search suggestions
   useEffect(() => {
-    if (query.trim().length > 0) {
+    if (query.trim().length > 2) {
       const timer = setTimeout(() => {
         fetch(`${BASE_URL}/api/search?q=${encodeURIComponent(query.trim())}`)
           .then((res) => res.json())
