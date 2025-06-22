@@ -29,45 +29,70 @@ export default function SongAnalysis() {
   const [authError, setAuthError] = useState('');
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
-  const [dominantColors, setDominantColors] = useState(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+  const [dominantColors, setDominantColors] = useState(['#1a1a2e', '#16213e', '#0f0f0f']);
 
   const extractDominantColors = (imageUrl) => {
     return new Promise((resolve) => {
-      const img = new window.Image();
+      const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+        // Resize for better performance
+        const maxSize = 100;
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         try {
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const data = imageData.data;
-          const colorMap = {};
-          for (let i = 0; i < data.length; i += 16) {
-            const r = Math.floor(data[i] / 20) * 20;
-            const g = Math.floor(data[i + 1] / 20) * 20;
-            const b = Math.floor(data[i + 2] / 20) * 20;
-            const rgb = `${r},${g},${b}`;
-            colorMap[rgb] = (colorMap[rgb] || 0) + 1;
+          const colorCounts = {};
+          // Sample every pixel
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const alpha = data[i + 3];
+            // Skip transparent pixels and very dark/light colors
+            if (alpha < 128 || (r + g + b) < 50 || (r + g + b) > 700) continue;
+            // Group similar colors
+            const rGroup = Math.floor(r / 25) * 25;
+            const gGroup = Math.floor(g / 25) * 25;
+            const bGroup = Math.floor(b / 25) * 25;
+            const colorKey = `${rGroup},${gGroup},${bGroup}`;
+            colorCounts[colorKey] = (colorCounts[colorKey] || 0) + 1;
           }
-          const sortedColors = Object.entries(colorMap)
+          // Get top 3 most frequent colors
+          const sortedColors = Object.entries(colorCounts)
             .sort(([,a], [,b]) => b - a)
             .slice(0, 3)
-            .map(([rgb]) => `rgb(${rgb})`);
-          const enhancedColors = sortedColors.map(color => {
-            const rgb = color.match(/\d+/g).map(Number);
-            const enhanced = rgb.map(val => Math.min(255, Math.max(30, val * 1.2)));
-            return `rgb(${enhanced.join(', ')})`;
-          });
-          resolve(enhancedColors.length >= 2 ? enhancedColors : ['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+            .map(([rgb]) => {
+              const [r, g, b] = rgb.split(',').map(Number);
+              return `rgb(${r}, ${g}, ${b})`;
+            });
+          if (sortedColors.length >= 2) {
+            // Enhance colors for better visual appeal
+            const enhancedColors = sortedColors.map(color => {
+              const [r, g, b] = color.match(/\d+/g).map(Number);
+              // Darken colors for background use
+              const darkR = Math.max(20, Math.floor(r * 0.6));
+              const darkG = Math.max(20, Math.floor(g * 0.6));
+              const darkB = Math.max(20, Math.floor(b * 0.6));
+              return `rgb(${darkR}, ${darkG}, ${darkB})`;
+            });
+            resolve(enhancedColors);
+          } else {
+            resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
+          }
         } catch (error) {
-          resolve(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+          console.warn('Canvas error:', error);
+          resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
         }
       };
-      img.onerror = () => {
-        resolve(['rgb(71, 66, 99)', 'rgb(52, 46, 79)', 'rgb(164, 37, 130)']);
+      img.onerror = (error) => {
+        console.warn('Image load error:', error);
+        resolve(['#1a1a2e', '#16213e', '#0f0f0f']);
       };
       img.src = imageUrl;
     });
@@ -82,13 +107,23 @@ export default function SongAnalysis() {
         const found = (data.results || []).find((s) => String(s.id) === String(id));
         if (found && found.cover_art) {
           setCoverArt(found.cover_art);
+          console.log('Cover art found:', found.cover_art);
           try {
             const colors = await extractDominantColors(found.cover_art);
+            console.log('Extracted colors:', colors);
             setDominantColors(colors);
           } catch (error) {
             console.warn('Error extracting colors:', error);
+            setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
           }
+        } else {
+          console.log('No cover art found');
+          setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
         }
+      })
+      .catch((error) => {
+        console.warn('API error:', error);
+        setDominantColors(['#1a1a2e', '#16213e', '#0f0f0f']);
       });
     setLyricsLoading(true);
     fetch(`${API_ENDPOINTS.ANALYZE_LYRICS}?record_id=${encodeURIComponent(id)}&track=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`)
@@ -104,6 +139,22 @@ export default function SongAnalysis() {
         setIsPageLoading(false);
       });
   }, [id, title, artist]);
+
+  const getRGBValues = (colorString) => {
+    const match = colorString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (match) {
+      return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+    }
+    if (colorString.startsWith('#')) {
+      const hex = colorString.slice(1);
+      return [
+        parseInt(hex.substr(0, 2), 16),
+        parseInt(hex.substr(2, 2), 16),
+        parseInt(hex.substr(4, 2), 16)
+      ];
+    }
+    return [26, 26, 46];
+  };
 
   // Suggestions logic
   useEffect(() => {
@@ -479,13 +530,14 @@ export default function SongAnalysis() {
         <style jsx>{`
           .loading-page {
             min-height: 100vh;
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f0f0f);
+            background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'Inter', 'Poppins', sans-serif;
             overflow: hidden;
             position: relative;
+            transition: background 0.8s ease;
           }
           .loading-page::before {
             content: '';
@@ -494,7 +546,7 @@ export default function SongAnalysis() {
             left: 0;
             right: 0;
             bottom: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.1) 0%, transparent 70%);
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             animation: pulse 3s ease-in-out infinite;
           }
           .loading-container {
@@ -508,7 +560,7 @@ export default function SongAnalysis() {
           .loading-logo-img {
             height: 60px;
             width: auto;
-            filter: drop-shadow(0 4px 20px rgba(138, 43, 226, 0.3));
+            filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3));
           }
           .loading-content {
             max-width: 400px;
@@ -518,9 +570,6 @@ export default function SongAnalysis() {
             font-weight: 600;
             color: #fff;
             margin-bottom: 10px;
-            background: linear-gradient(90deg, #fff, #b19cd9, #ff1493);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             animation: shimmer 2s ease-in-out infinite;
           }
           .loading-subtitle {
@@ -540,7 +589,7 @@ export default function SongAnalysis() {
           }
           .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #8A2BE2, #FF1493, #8A2BE2);
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.8));
             border-radius: 2px;
             animation: progress 2s ease-in-out infinite;
           }
@@ -552,7 +601,7 @@ export default function SongAnalysis() {
           .loading-dots span {
             width: 8px;
             height: 8px;
-            background: linear-gradient(45deg, #8A2BE2, #FF1493);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             animation: bounce 1.4s ease-in-out infinite;
           }
@@ -733,7 +782,7 @@ export default function SongAnalysis() {
           </div>
         )}
 
-        <div className="futuristic-background" style={{ background: `linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]})` }}>
+        <div className="futuristic-background">
           <div className="song-content-container">
             <div className="song-header-section">
               <div className="cover-art-container">
@@ -843,7 +892,7 @@ export default function SongAnalysis() {
                   <div className="lyrics-header">
                     <h3>Lyrics</h3>
                   </div>
-                  <div className="lyrics-content-modern" style={{ background: `linear-gradient(135deg, rgba(${dominantColors[0].match(/\d+/g)?.join(', ')}, 0.1), rgba(${dominantColors[1].match(/\d+/g)?.join(', ')}, 0.15))`, border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '25px', fontSize: '0.95rem', lineHeight: '1.8', overflowY: 'auto', maxHeight: '500px', backdropFilter: 'blur(10px)', transition: 'background 0.8s ease' }}>
+                  <div className="lyrics-content-modern">
                     {lyricsLoading ? (
                       <div className="loading-text">Analyzing...</div>
                     ) : isReanalyzing ? (
@@ -956,11 +1005,25 @@ export default function SongAnalysis() {
         }
         
         .futuristic-background {
+          background: linear-gradient(135deg, ${dominantColors[0]}, ${dominantColors[1]}, ${dominantColors[2] || dominantColors[0]});
           min-height: 100vh;
-          padding-top: calc(70px + env(safe-area-inset-top)); /* Add padding to push content below header */
+          padding-top: calc(70px + env(safe-area-inset-top));
           width: 100%;
           position: relative;
           overflow: hidden;
+          transition: background 0.8s ease;
+        }
+        
+        .futuristic-background::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                      radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+          pointer-events: none;
         }
         
         .header {
@@ -1427,32 +1490,19 @@ export default function SongAnalysis() {
         }
         
         .lyrics-content-modern {
-          position: relative;
+          background: linear-gradient(135deg, 
+            rgba(${getRGBValues(dominantColors[0]).join(', ')}, 0.2), 
+            rgba(${getRGBValues(dominantColors[1]).join(', ')}, 0.25)
+          );
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 12px;
+          padding: 25px;
+          font-size: 0.95rem;
+          line-height: 1.8;
           overflow-y: auto;
           max-height: 500px;
-          padding-right: 10px;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-        
-        .lyrics-content-modern::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .lyrics-content-modern::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .lyrics-content-modern::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.2);
-          border-radius: 10px;
-        }
-        
-        .lyrics-content-modern pre {
-          font-size: 0.9rem;
-          color: rgba(255, 255, 255, 0.9);
-          line-height: 1.6;
-          font-family: 'Inter', 'Poppins', sans-serif;
+          backdrop-filter: blur(10px);
+          transition: all 0.8s ease;
         }
         
         .loading-text {
