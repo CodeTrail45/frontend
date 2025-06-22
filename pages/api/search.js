@@ -11,10 +11,10 @@ export default async function handler(req, res) {
 
   const { q } = req.query;
 
-  // Validate the query parameter (must be at least 3 characters)
-  if (!q || typeof q !== 'string' || q.trim().length < 3) {
+  // Validate the query parameter (must be at least 1 character)
+  if (!q || typeof q !== 'string' || q.trim().length < 1) {
     return res.status(400).json({
-      error: 'Missing or invalid query parameter. Please enter at least 3 characters.',
+      error: 'Missing or invalid query parameter. Please enter at least 1 character.',
     });
   }
 
