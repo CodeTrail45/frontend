@@ -939,6 +939,15 @@ export default function SongAnalysis() {
 
             <div className="content-tabs">
               <div 
+                className={`tab ${activeSection === 'analysis' ? 'active' : ''}`}
+                onClick={() => setActiveSection('analysis')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Analysis
+              </div>
+              <div 
                 className={`tab ${activeSection === 'lyrics' ? 'active' : ''}`}
                 onClick={() => setActiveSection('lyrics')}
               >
@@ -951,173 +960,134 @@ export default function SongAnalysis() {
                 </svg>
                 Lyrics
               </div>
-              <div 
-                className={`tab ${activeSection === 'comments' ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveSection('comments');
-                  // Force a comments refresh when tab is clicked
-                  if (id) {
-                    fetch(`${BASE_URL}/api/songs/${id}/comments`)
-                      .then(async (res) => {
-                        if (res.status === 404) {
-                          return [];
-                        }
-                        if (!res.ok) {
-                          console.warn(`Comments fetch returned status ${res.status}`);
-                          return [];
-                        }
-                        try {
-                          const data = await res.json();
-                          return Array.isArray(data) ? data : [];
-                        } catch (err) {
-                          console.warn('Error parsing comments response:', err);
-                          return [];
-                        }
-                      })
-                      .then((data) => {
-                        setComments(data);
-                      })
-                      .catch((err) => {
-                        console.warn('Error in comments fetch:', err);
-                        setComments([]);
-                      });
-                  }
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                Analysis
-              </div>
             </div>
 
             <div className="content-section">
-              {activeSection === 'lyrics' && (
-                <div className="lyrics-section-modern">
-                  <div className="lyrics-header">
-                    <h3>Lyrics</h3>
-                  </div>
-                  <div className="lyrics-content-modern">
-                    {lyricsLoading ? (
-                      <div className="loading-text">Analyzing...</div>
-                    ) : isReanalyzing ? (
-                      <div className="loading-text">Reanalyzing...</div>
-                    ) : (
-                      <pre>{lyrics}</pre>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeSection === 'comments' && (
-                <div className="comments-section">
-                  {/* Analysis Section */}
-                  {analysis && (
-                    <div className="lyrics-section-modern" style={{ marginBottom: 32 }}>
-                      <div className="lyrics-header">
-                        <h3>Analysis</h3>
-                      </div>
-                      <div className="lyrics-content-modern">
-                        {analysis.overallHeadline && (
-                          <div style={{ fontWeight: 700, fontSize: '1.1em', marginBottom: 12 }}>{analysis.overallHeadline}</div>
-                        )}
-                        {analysis.introduction && (
-                          <div style={{ marginBottom: 16 }}>{analysis.introduction}</div>
-                        )}
-                        {Array.isArray(analysis.sectionAnalyses) && analysis.sectionAnalyses.length > 0 && (
-                          <div style={{ marginBottom: 16 }}>
-                            {analysis.sectionAnalyses.map((section, idx) => (
-                              <div key={idx} style={{ marginBottom: 18 }}>
-                                {section.sectionName && <div style={{ fontWeight: 600, marginBottom: 4 }}>{section.sectionName}</div>}
-                                {section.verseSummary && <div style={{ fontStyle: 'italic', marginBottom: 2 }}>{section.verseSummary}</div>}
-                                {section.analysis && <div>{section.analysis}</div>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {analysis.conclusion && (
-                          <div style={{ marginTop: 12, fontWeight: 500 }}>{analysis.conclusion}</div>
-                        )}
-                      </div>
+              {activeSection === 'analysis' && (
+                analysis && (
+                  <div className="lyrics-section-modern">
+                    <div className="lyrics-header">
+                      <h3>Analysis</h3>
                     </div>
-                  )}
-                  {/* Comment Form and List */}
-                  <div className="comment-form-container">
-                    <form onSubmit={handleAddComment} className="comment-form">
-                      <div className="user-avatar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      </div>
-                      <div className="comment-input-container">
-                        <input
-                          type="text"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Add a comment..."
-                          className="comment-input"
-                        />
-                        <button type="submit" className="comment-submit">Post</button>
-                      </div>
-                    </form>
-                  </div>
-                  <div className="comments-list">
-                    {comments.map((comment) => {
-                      // Get stored user ID to check if comment belongs to current user
-                      const currentUserId = localStorage.getItem('userId');
-                      const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
-                      
-                      return (
-                        <div key={comment.id} className="comment-block">
-                          <div className="comment-avatar">
-                            <div className="avatar-circle">
-                              {comment.username ? comment.username[0].toUpperCase() : 'U'}
+                    <div className="lyrics-content-modern">
+                      {analysis.overallHeadline && (
+                        <div style={{ fontWeight: 700, fontSize: '1.1em', marginBottom: 12 }}>{analysis.overallHeadline}</div>
+                      )}
+                      {analysis.introduction && (
+                        <div style={{ marginBottom: 16 }}>{analysis.introduction}</div>
+                      )}
+                      {Array.isArray(analysis.sectionAnalyses) && analysis.sectionAnalyses.length > 0 && (
+                        <div style={{ marginBottom: 16 }}>
+                          {analysis.sectionAnalyses.map((section, idx) => (
+                            <div key={idx} style={{ marginBottom: 18 }}>
+                              {section.sectionName && <div style={{ fontWeight: 600, marginBottom: 4 }}>{section.sectionName}</div>}
+                              {section.verseSummary && <div style={{ fontStyle: 'italic', marginBottom: 2 }}>{section.verseSummary}</div>}
+                              {section.analysis && <div>{section.analysis}</div>}
                             </div>
-                          </div>
-                          <div className="comment-content">
-                            <div className="comment-header">
-                              <span className="comment-username">
-                                {comment.username || 'Anonymous User'}
-                              </span>
-                              <span className="comment-time">
-                                {new Date(comment.created_at).toLocaleDateString()}
-                              </span>
-                              {isCommentOwner && (
-                                <button 
-                                  className="delete-button" 
-                                  onClick={() => handleDeleteComment(comment.id)}
-                                  aria-label="Delete comment"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 6h18"></path>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                            <p className="comment-text">{comment.content}</p>
-                            <div className="comment-actions">
-                              <button 
-                                className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
-                                onClick={() => handleUpvoteComment(comment.id)}
-                                disabled={userUpvotes[comment.id]}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
-                                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
-                                </svg>
-                                <span>{comment.upvote_count || 0}</span>
-                              </button>
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      )
-                    })}
+                      )}
+                      {analysis.conclusion && (
+                        <div style={{ marginTop: 12, fontWeight: 500 }}>{analysis.conclusion}</div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )
+              )}
+              {activeSection === 'lyrics' && (
+                <>
+                  <div className="lyrics-section-modern">
+                    <div className="lyrics-header">
+                      <h3>Lyrics</h3>
+                    </div>
+                    <div className="lyrics-content-modern">
+                      {lyricsLoading ? (
+                        <div className="loading-text">Analyzing...</div>
+                      ) : isReanalyzing ? (
+                        <div className="loading-text">Reanalyzing...</div>
+                      ) : (
+                        <pre>{lyrics}</pre>
+                      )}
+                    </div>
+                  </div>
+                  {/* Comments below lyrics */}
+                  <div className="comments-section">
+                    <div className="comment-form-container">
+                      <form onSubmit={handleAddComment} className="comment-form">
+                        <div className="user-avatar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                          </svg>
+                        </div>
+                        <div className="comment-input-container">
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            className="comment-input"
+                          />
+                          <button type="submit" className="comment-submit">Post</button>
+                        </div>
+                      </form>
+                    </div>
+                    <div className="comments-list">
+                      {comments.map((comment) => {
+                        // Get stored user ID to check if comment belongs to current user
+                        const currentUserId = localStorage.getItem('userId');
+                        const isCommentOwner = currentUserId && currentUserId === String(comment.user_id);
+                        return (
+                          <div key={comment.id} className="comment-block">
+                            <div className="comment-avatar">
+                              <div className="avatar-circle">
+                                {comment.username ? comment.username[0].toUpperCase() : 'U'}
+                              </div>
+                            </div>
+                            <div className="comment-content">
+                              <div className="comment-header">
+                                <span className="comment-username">
+                                  {comment.username || 'Anonymous User'}
+                                </span>
+                                <span className="comment-time">
+                                  {new Date(comment.created_at).toLocaleDateString()}
+                                </span>
+                                {isCommentOwner && (
+                                  <button 
+                                    className="delete-button" 
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    aria-label="Delete comment"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M3 6h18"></path>
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              <p className="comment-text">{comment.content}</p>
+                              <div className="comment-actions">
+                                <button 
+                                  className={`comment-action upvote ${userUpvotes[comment.id] ? 'upvoted' : ''}`}
+                                  onClick={() => handleUpvoteComment(comment.id)}
+                                  disabled={userUpvotes[comment.id]}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"></path>
+                                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                                  </svg>
+                                  <span>{comment.upvote_count || 0}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
